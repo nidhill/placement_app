@@ -25,11 +25,14 @@ interface ApplicationsTrackerProps {
   onRefreshData?: () => void;
 }
 
+export type DateFilterRange = 'ALL' | 'WEEK' | 'MONTH' | 'YEAR';
+
 export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefreshData }) => {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState<string>('ALL');
   const [helpFilter, setHelpFilter] = useState<string>('ALL');
+  const [dateFilter, setDateFilter] = useState<DateFilterRange>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Detail modal
@@ -127,17 +130,51 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
     }
   };
 
-  // Pipeline counts
-  const countStarted = applications.filter(a => a.status === 'APPLICATION_STARTED').length;
-  const countApplied = applications.filter(a => a.status === 'APPLIED').length;
-  const countNotApplied = applications.filter(a => a.status === 'NOT_APPLIED').length;
-  const countShortlisted = applications.filter(a => a.status === 'SHORTLISTED').length;
-  const countInterview = applications.filter(a => a.status === 'INTERVIEW_SCHEDULED' || a.status === 'INTERVIEWED').length;
-  const countOffer = applications.filter(a => a.status === 'OFFER_RECEIVED' || a.status === 'SELECTED').length;
-  const countPlaced = applications.filter(a => a.status === 'JOINED').length;
-  const countHelpRequested = applications.filter(a => a.needsHelp || (a.helpStatus && a.helpStatus !== 'NONE' && a.helpStatus !== 'RESOLVED')).length;
+  // Date filter evaluation helper
+  const isApplicationInDateRange = (app: JobApplication, range: DateFilterRange): boolean => {
+    if (range === 'ALL') return true;
+    const timestamp = app.appliedAt || app.startedAt || app.confirmedAt || app.updatedAt;
+    if (!timestamp) return false;
+    const appDate = new Date(timestamp);
+    if (isNaN(appDate.getTime())) return false;
 
-  const filteredApps = applications.filter(a => {
+    const now = new Date();
+    if (range === 'WEEK') {
+      const startOfWeek = new Date(now);
+      const day = startOfWeek.getDay();
+      const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+      startOfWeek.setDate(diff);
+      startOfWeek.setHours(0, 0, 0, 0);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return appDate >= startOfWeek || appDate >= sevenDaysAgo;
+    }
+    if (range === 'MONTH') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      return appDate >= startOfMonth || appDate >= thirtyDaysAgo;
+    }
+    if (range === 'YEAR') {
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      return appDate >= startOfYear || appDate >= yearAgo;
+    }
+    return true;
+  };
+
+  // Applications scoped by active date timeframe
+  const dateScopedApps = applications.filter(a => isApplicationInDateRange(a, dateFilter));
+
+  // Pipeline counts (scoped to selected date timeframe)
+  const countStarted = dateScopedApps.filter(a => a.status === 'APPLICATION_STARTED').length;
+  const countApplied = dateScopedApps.filter(a => a.status === 'APPLIED').length;
+  const countNotApplied = dateScopedApps.filter(a => a.status === 'NOT_APPLIED').length;
+  const countShortlisted = dateScopedApps.filter(a => a.status === 'SHORTLISTED').length;
+  const countInterview = dateScopedApps.filter(a => a.status === 'INTERVIEW_SCHEDULED' || a.status === 'INTERVIEWED').length;
+  const countOffer = dateScopedApps.filter(a => a.status === 'OFFER_RECEIVED' || a.status === 'SELECTED').length;
+  const countPlaced = dateScopedApps.filter(a => a.status === 'JOINED').length;
+  const countHelpRequested = dateScopedApps.filter(a => a.needsHelp || (a.helpStatus && a.helpStatus !== 'NONE' && a.helpStatus !== 'RESOLVED')).length;
+
+  const filteredApps = dateScopedApps.filter(a => {
     if (stageFilter !== 'ALL') {
       if (stageFilter === 'APPLICATION_STARTED' && a.status !== 'APPLICATION_STARTED') return false;
       if (stageFilter === 'APPLIED' && a.status !== 'APPLIED') return false;
@@ -168,13 +205,42 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       
-      {/* Header */}
+      {/* Header with Date Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Application Pipeline & External Tracking</h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Monitor student external job application progress, decline feedback, and assist students needing placement support.
           </p>
+        </div>
+
+        {/* Date Filter Segmented Controls (Week / Month / Year) */}
+        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200/80 shadow-2xs self-start sm:self-auto">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 text-slate-400">
+            <Calendar className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-[11px] font-semibold text-slate-600 hidden md:inline">Timeframe:</span>
+          </div>
+          {(
+            [
+              { key: 'ALL', label: 'All Time' },
+              { key: 'WEEK', label: 'Week' },
+              { key: 'MONTH', label: 'Month' },
+              { key: 'YEAR', label: 'Year' }
+            ] as const
+          ).map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setDateFilter(tab.key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                dateFilter === tab.key
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -331,20 +397,47 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
             <option value="IN_PROGRESS">🔄 Help In Progress</option>
             <option value="RESOLVED">✅ Help Resolved</option>
           </select>
+
+          {/* Date Filter Dropdown */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700">
+            <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <select
+              value={dateFilter}
+              onChange={e => setDateFilter(e.target.value as DateFilterRange)}
+              className="bg-transparent font-semibold text-slate-700 focus:outline-none cursor-pointer"
+            >
+              <option value="ALL">All Dates (Full History)</option>
+              <option value="WEEK">This Week (Last 7 Days)</option>
+              <option value="MONTH">This Month (Last 30 Days)</option>
+              <option value="YEAR">This Year (Academic Cycle)</option>
+            </select>
+          </div>
         </div>
 
-        {(stageFilter !== 'ALL' || helpFilter !== 'ALL' || searchQuery) && (
-          <button
-            onClick={() => {
-              setStageFilter('ALL');
-              setHelpFilter('ALL');
-              setSearchQuery('');
-            }}
-            className="text-xs text-blue-600 hover:underline font-semibold"
-          >
-            Reset Filters
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-400 font-medium">
+            Showing <strong className="text-slate-700">{filteredApps.length}</strong> of {applications.length} applications
+            {dateFilter !== 'ALL' && (
+              <span className="ml-1.5 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                {dateFilter === 'WEEK' ? 'Week' : dateFilter === 'MONTH' ? 'Month' : 'Year'}
+              </span>
+            )}
+          </span>
+
+          {(stageFilter !== 'ALL' || helpFilter !== 'ALL' || dateFilter !== 'ALL' || searchQuery) && (
+            <button
+              onClick={() => {
+                setStageFilter('ALL');
+                setHelpFilter('ALL');
+                setDateFilter('ALL');
+                setSearchQuery('');
+              }}
+              className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer"
+            >
+              Reset Filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Applications Table */}
@@ -423,11 +516,20 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                               "{app.studentComment}"
                             </p>
                           )}
+                          <span className="text-[10px] text-slate-400 font-mono block">
+                            {new Date(app.updatedAt || app.appliedAt).toLocaleDateString()}
+                          </span>
                         </div>
                       ) : (
-                        <span className="text-slate-400 text-[11px]">
-                          {app.status === 'APPLIED' ? `Applied ${new Date(app.appliedAt).toLocaleDateString()}` : '—'}
-                        </span>
+                        <div className="space-y-0.5">
+                          <span className="text-slate-600 text-[11px] font-medium block">
+                            {app.status === 'APPLIED' ? 'Applied' : app.status === 'APPLICATION_STARTED' ? 'Application Started' : app.status.replace(/_/g, ' ')}
+                          </span>
+                          <span className="text-slate-400 text-[10px] flex items-center gap-1 font-mono">
+                            <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                            {new Date(app.appliedAt || app.startedAt || app.updatedAt).toLocaleDateString()}
+                          </span>
+                        </div>
                       )}
                     </td>
 
