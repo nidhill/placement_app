@@ -61,7 +61,7 @@ const ROLE_CONFIGS: RoleConfig[] = [
     role: 'STUDENT',
     title: 'Student',
     subtitle: 'Career & Opportunities',
-    description: 'Personal placement portal, academic readiness scorecard, verified skills, job applications & interviews.',
+    description: 'Personal placement portal, verified profile & CV, technical skills, job applications & interviews.',
     icon: GraduationCap,
     defaultEmail: 'ali.raza@student.haca.edu',
     sampleName: 'Ali Raza'

@@ -195,9 +195,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
           </div>
         </div>
 
-        {/* Academic Readiness Gap Breakdown */}
+        {/* Academic Eligibility Audit Breakdown */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
-          <h3 className="font-bold text-slate-900 text-base">Your Academic Readiness Audit</h3>
+          <h3 className="font-bold text-slate-900 text-base">Your Academic Criteria Audit</h3>
           <p className="text-xs text-slate-500">
             Compare your current LMS indicators against the placement eligibility criteria:
           </p>

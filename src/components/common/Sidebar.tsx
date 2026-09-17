@@ -55,7 +55,6 @@ export type NavigationItem =
   // Student Portal specific
   | 'student_dashboard'
   | 'student_profile'
-  | 'student_readiness'
   | 'student_jobs'
   | 'student_applications'
   | 'student_interviews'
@@ -214,7 +213,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const studentNav: NavLinkConfig[] = [
     { id: 'student_dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'student_profile', label: 'My Profile', icon: UserIcon },
-    { id: 'student_readiness', label: 'Placement Readiness', icon: ShieldCheck },
     { id: 'student_jobs', label: 'Find Jobs', icon: Briefcase },
     { id: 'student_applications', label: 'My Applications', icon: FileCheck2 },
     { id: 'student_interviews', label: 'Interviews', icon: Calendar },

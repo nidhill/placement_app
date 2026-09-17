@@ -567,27 +567,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             </div>
           </div>
 
-          {/* 3 Metric Cards: Placement Readiness, Profile Completion, Active Applications */}
+          {/* 3 Metric Cards: Profile Completion, Recommended Jobs, Active Applications */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             
-            {/* Placement Readiness */}
-            <div 
-              onClick={() => onNavigate && onNavigate('student_readiness')}
-              className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs cursor-pointer hover:border-slate-300 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">Placement Readiness</span>
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-black text-slate-900">{profile.placementReadinessScore || 85}%</span>
-                <span className="text-xs text-emerald-600 font-semibold">High Readiness</span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1.5">
-                Technical assessment & verified project defense
-              </p>
-            </div>
-
             {/* Profile Completion */}
             <div 
               onClick={() => onNavigate && onNavigate('student_profile')}
@@ -607,6 +589,24 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               </div>
               <p className="text-[11px] text-slate-400 mt-1.5">
                 {(profile.resumeFileName || profile.resumeDataUrl) ? 'CV document verified and attached' : 'Upload your CV / Resume in My Profile'}
+              </p>
+            </div>
+
+            {/* Matched / Recommended Jobs */}
+            <div 
+              onClick={() => onNavigate && onNavigate('student_jobs')}
+              className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs cursor-pointer hover:border-slate-300 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Recommended Jobs</span>
+                <Briefcase className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-3xl font-black text-slate-900">{recommendedJobs.length}</span>
+                <span className="text-xs text-emerald-600 font-semibold">Matching Profile</span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1.5">
+                {allJobs.length} total tech positions available
               </p>
             </div>
 
@@ -896,7 +896,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             <div className="space-y-2.5 text-xs text-slate-600">
               <div className="flex items-center gap-2.5 py-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span>Placement readiness clearance approved by Main Admin.</span>
+                <span>Placement eligibility clearance approved by Main Admin.</span>
                 <span className="text-[10px] text-slate-400 ml-auto">2 days ago</span>
               </div>
               <div className="flex items-center gap-2.5 py-1">
@@ -1218,63 +1218,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       )}
 
       {/* =========================================================
-          3. SUB-VIEW: PLACEMENT READINESS (student_readiness)
-          ========================================================= */}
-      {(currentView === 'student_readiness' || currentView === 'readiness') && profile && (
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Placement Readiness Evaluation</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Automated readiness benchmarks calculated across academic pillars</p>
-              </div>
-              <span className="text-2xl font-black text-slate-900 bg-slate-100 px-3 py-1 rounded-xl">
-                {profile.placementReadinessScore || 85}%
-              </span>
-            </div>
-
-            <div className="space-y-4 text-xs mt-6">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-semibold text-slate-700">Academic Standing & Minimum Attendance (≥ 85%)</span>
-                  <span className="font-bold text-slate-900">{profile.academic.attendancePercentage}% (Passed)</span>
-                </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${profile.academic.attendancePercentage}%` }} />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-semibold text-slate-700">Capstone Project Defense & Code Quality</span>
-                  <span className="font-bold text-slate-900">90% (Approved)</span>
-                </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `90%` }} />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-semibold text-slate-700">Technical Assessment & Coding Challenge</span>
-                  <span className="font-bold text-slate-900">82% (Qualified)</span>
-                </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-purple-500 rounded-full" style={{ width: `82%` }} />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600">
-              <span className="font-bold text-slate-900 block mb-1">Testing Phase Evaluation Note:</span>
-              Placement eligibility is directly approved by the Main Admin. All criteria have met institutional thresholds.
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =========================================================
-          4. SUB-VIEW: FIND JOBS (student_jobs)
+          3. SUB-VIEW: FIND JOBS (student_jobs)
           ========================================================= */}
       {(currentView === 'student_jobs' || currentView === 'jobs' || currentView === 'recommended_jobs') && (
         <div className="space-y-6">
@@ -2005,7 +1949,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               <div className="flex-1">
                 <div className="font-semibold text-slate-900">Placement Eligibility Granted</div>
                 <div className="text-slate-500 mt-0.5">
-                  Your academic records and placement readiness have been reviewed and approved by the Main Admin.
+                  Your academic records and placement eligibility have been reviewed and approved by the Main Admin.
                 </div>
                 <div className="text-[10px] text-slate-400 mt-1">Yesterday at 4:30 PM</div>
               </div>

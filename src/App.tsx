@@ -214,8 +214,6 @@ export default function App() {
       case 'student_profile':
       case 'profile':
         return { title: 'Student Profile', subtitle: 'Academic Records & Portfolio Links' };
-      case 'student_readiness':
-        return { title: 'Placement Readiness', subtitle: 'Evaluation Scorecard & Benchmarks' };
       case 'student_jobs':
         return { title: 'Find Jobs', subtitle: 'Explore Open Corporate Vacancies' };
       case 'student_applications':

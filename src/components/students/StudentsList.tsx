@@ -233,7 +233,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                 <th className="py-3 px-4">Student</th>
                 <th className="py-3 px-4">Program</th>
                 <th className="py-3 px-4">Batch</th>
-                <th className="py-3 px-4">Readiness</th>
+                <th className="py-3 px-4">Attendance</th>
                 <th className="py-3 px-4">Eligibility</th>
                 <th className="py-3 px-4 text-center">Applications</th>
                 <th className="py-3 px-4 text-center">Interviews</th>
@@ -285,11 +285,12 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                         {student.batch}
                       </td>
 
-                      {/* Readiness */}
+                      {/* Attendance */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-slate-800">{student.placementReadinessScore || 85}%</span>
-                          <span className="text-[11px] text-slate-400">({student.academic.attendancePercentage}% att.)</span>
+                          <span className={`font-semibold ${student.academic.attendancePercentage >= 85 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                            {student.academic.attendancePercentage}%
+                          </span>
                         </div>
                       </td>
 
@@ -441,10 +442,10 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                 </div>
               </div>
 
-              {/* 2. Placement Readiness Checklist */}
+              {/* 2. Placement Checklist */}
               <div>
                 <h4 className="font-semibold text-slate-900 uppercase tracking-wider text-[11px] mb-3 text-slate-400">
-                  Placement Readiness
+                  Placement Checklist
                 </h4>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50/50">
@@ -534,7 +535,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
               {/* Evaluation remarks */}
               {selectedStudent.evaluationNotes && (
                 <div className="p-3 rounded-lg bg-amber-50/60 border border-amber-100 text-amber-900">
-                  <span className="font-semibold block text-[11px]">Placement Readiness Evaluation Remarks:</span>
+                  <span className="font-semibold block text-[11px]">Evaluation Remarks:</span>
                   <p className="mt-0.5 text-xs text-amber-800">{selectedStudent.evaluationNotes}</p>
                 </div>
               )}

@@ -87,7 +87,6 @@ export const Header: React.FC<HeaderProps> = ({
       case 'student_dashboard': return 'Student Dashboard';
       case 'student_profile':
       case 'profile': return 'Student Profile';
-      case 'student_readiness': return 'Placement Readiness';
       case 'student_jobs': return 'Find Jobs';
       case 'student_applications': return 'My Applications';
       case 'student_interviews': return 'My Interviews';

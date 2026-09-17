@@ -74,8 +74,8 @@ async function startServer() {
       return res.status(403).json({ error: 'This user account has been deactivated.' });
     }
 
-    // Student accounts should always be able to log in to view their placement readiness scorecard,
-    // academic benchmarks, and profile records. Gating applies only to submitting applications and job recommendations.
+    // Student accounts should always be able to log in to view their academic records,
+    // benchmarks, and profile details. Gating applies only to submitting applications and job recommendations.
     const studentProfile = user.role === 'STUDENT' 
       ? (dbStore.getStudentById(user.id) || dbStore.getAllStudents().find(s => s.id === user.id || s.email === user.email) || dbStore.getAllStudents()[0])
       : undefined;
