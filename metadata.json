@@ -1,0 +1,6 @@
+{
+  "name": "HACA Centralized Placement Application",
+  "description": "Centralized academic placement management dashboard for HACA connecting student records with placement operations, candidate matching, pipeline tracking, and executive analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
