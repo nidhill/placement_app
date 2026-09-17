@@ -360,27 +360,14 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Fetch Apify Jobs Button */}
-          <button
-            onClick={handleFetchApifyJobs}
-            disabled={fetchingApify}
-            className="px-3.5 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors shadow-2xs flex items-center gap-2 disabled:opacity-60 cursor-pointer"
-            title="Fetch LinkedIn scraped jobs via Apify"
+          {/* Automated Daily Sync Status Badge */}
+          <div 
+            className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
+            title="Technology jobs are automatically ingested from Apify & Public ATS daily at 2:00 AM"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${fetchingApify ? 'animate-spin' : ''}`} />
-            <span>{fetchingApify ? 'Scraping Apify Jobs...' : 'Fetch Apify'}</span>
-          </button>
-
-          {/* Sync ATS Public API Button */}
-          <button
-            onClick={handleFetchAtsJobs}
-            disabled={fetchingAts}
-            className="px-3.5 py-1.5 bg-teal-800 text-white rounded-lg text-xs font-semibold hover:bg-teal-700 transition-colors shadow-2xs flex items-center gap-2 disabled:opacity-60 cursor-pointer"
-            title="Ingest structured technology jobs from Greenhouse, Lever & Ashby public APIs"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-teal-300 ${fetchingAts ? 'animate-spin' : ''}`} />
-            <span>{fetchingAts ? 'Syncing Public ATS...' : 'Sync ATS API'}</span>
-          </button>
+            <Clock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span>Auto-Syncs Daily at 2:00 AM</span>
+          </div>
 
           {/* Post Job Button */}
           <button
@@ -448,15 +435,8 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
 
           {fetchNotice.type === 'error' && (
             <div className="pt-2 flex items-center gap-3">
-              <button
-                onClick={handleFetchApifyJobs}
-                className="px-3 py-1 bg-white border border-rose-300 text-rose-800 rounded-lg text-xs font-semibold hover:bg-rose-100 transition-colors cursor-pointer flex items-center gap-1.5"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>Try Again</span>
-              </button>
               <span className="text-[11px] text-slate-500">
-                Existing active jobs remain fully available.
+                Scheduled automated sync will retry tonight at 2:00 AM. Existing active jobs remain fully available.
               </span>
             </div>
           )}

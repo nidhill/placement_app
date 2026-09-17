@@ -11,7 +11,8 @@ import {
   Activity, 
   Check, 
   AlertTriangle,
-  Globe2
+  Globe2,
+  Clock
 } from 'lucide-react';
 
 export const IntegrationsView: React.FC = () => {
@@ -220,11 +221,37 @@ export const IntegrationsView: React.FC = () => {
     <div className="space-y-6 max-w-7xl mx-auto">
       
       {/* Header */}
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900 tracking-tight">System Integrations</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Manage automated synchronization with the Academic LMS, Apify LinkedIn Scraper, and Public ATS Job APIs
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900 tracking-tight">System Integrations</h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Automated synchronization with the Academic LMS, Apify LinkedIn Scraper, and Public ATS Job APIs
+          </p>
+        </div>
+
+        {/* 2:00 AM Schedule Badge */}
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-semibold shadow-2xs">
+          <Clock className="w-4 h-4 text-blue-600" />
+          <span>Scheduled Daily Update · 2:00 AM</span>
+        </div>
+      </div>
+
+      {/* Automated Sync Status Banner */}
+      <div className="p-4 rounded-xl bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-white">Automated Daily Sync Active (2:00 AM Daily)</div>
+            <div className="text-[11px] text-slate-300 mt-0.5">
+              Manual syncing has been replaced with institutional automated scheduling. All student records and employer jobs refresh automatically every night.
+            </div>
+          </div>
+        </div>
+        <span className="px-3 py-1 bg-white/10 text-blue-200 font-semibold rounded-lg text-xs self-start sm:self-auto shrink-0 border border-white/10">
+          Next Run: 2:00 AM Daily
+        </span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -275,14 +302,10 @@ export const IntegrationsView: React.FC = () => {
             <span className="text-[11px] text-slate-400">
               Last sync: {new Date(lmsConfig.lastSyncTimestamp || Date.now()).toLocaleTimeString()}
             </span>
-            <button
-              onClick={handleSyncLms}
-              disabled={syncingLms}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${syncingLms ? 'animate-spin' : ''}`} />
-              <span>{syncingLms ? 'Syncing...' : 'Sync LMS Now'}</span>
-            </button>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200">
+              <Clock className="w-3.5 h-3.5 text-blue-600" />
+              <span>Auto-Syncs at 2:00 AM</span>
+            </div>
           </div>
         </div>
 
@@ -377,8 +400,13 @@ export const IntegrationsView: React.FC = () => {
             )}
           </div>
 
-          {/* Action Buttons: [ Test Connection ] and [ Fetch Jobs ] */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+          {/* Action Area: Test Connection + Auto-sync info */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+              <Clock className="w-3.5 h-3.5 text-purple-600" />
+              <span>Daily at 2:00 AM</span>
+            </div>
+
             <button
               onClick={handleTestConnection}
               disabled={testingApify || fetchingJobs}
@@ -386,15 +414,6 @@ export const IntegrationsView: React.FC = () => {
             >
               <Activity className={`w-3.5 h-3.5 text-slate-500 ${testingApify ? 'animate-pulse text-purple-600' : ''}`} />
               <span>{testingApify ? 'Testing...' : 'Test Connection'}</span>
-            </button>
-
-            <button
-              onClick={handleFetchJobs}
-              disabled={testingApify || fetchingJobs}
-              className="px-3.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
-            >
-              <Play className={`w-3.5 h-3.5 ${fetchingJobs ? 'animate-spin text-purple-400' : ''}`} />
-              <span>{fetchingJobs ? 'Fetching jobs from Apify...' : 'Fetch Jobs'}</span>
             </button>
           </div>
         </div>
@@ -490,8 +509,13 @@ export const IntegrationsView: React.FC = () => {
             )}
           </div>
 
-          {/* Action Buttons: [ Test Connection ] and [ Sync ATS Jobs ] */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+          {/* Action Area: Test Connection + Auto-sync info */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+              <Clock className="w-3.5 h-3.5 text-teal-600" />
+              <span>Daily at 2:00 AM</span>
+            </div>
+
             <button
               onClick={handleTestAts}
               disabled={testingAts || syncingAts}
@@ -499,15 +523,6 @@ export const IntegrationsView: React.FC = () => {
             >
               <Activity className={`w-3.5 h-3.5 text-slate-500 ${testingAts ? 'animate-pulse text-teal-600' : ''}`} />
               <span>{testingAts ? 'Testing...' : 'Test Connection'}</span>
-            </button>
-
-            <button
-              onClick={handleSyncAts}
-              disabled={testingAts || syncingAts}
-              className="px-3.5 py-1.5 rounded-lg bg-teal-800 text-white text-xs font-semibold hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
-            >
-              <Play className={`w-3.5 h-3.5 ${syncingAts ? 'animate-spin text-teal-300' : ''}`} />
-              <span>{syncingAts ? 'Syncing Public ATS...' : 'Sync ATS Jobs'}</span>
             </button>
           </div>
         </div>

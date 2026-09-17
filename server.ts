@@ -926,6 +926,88 @@ async function startServer() {
     res.json({ message: 'System state reset to clean Apify jobs state.', totalJobs: dbStore.getAllJobs().length });
   });
 
+  // -------------------------------------------------------------
+  // AUTOMATED DAILY 2:00 AM SYNCHRONIZATION SCHEDULER
+  // -------------------------------------------------------------
+  const scheduleDailySyncAt2AM = () => {
+    const runScheduledSync = async () => {
+      const adminActor = { id: 'user-root-admin', name: 'System Automated Scheduler', role: 'MAIN_ADMIN' as const };
+      console.log(`[Scheduled Sync 2:00 AM] Triggering automated daily synchronization at ${new Date().toISOString()}...`);
+
+      // 1. Academic LMS Synchronization
+      try {
+        const lmsRes = LmsSyncService.syncFromLms(adminActor);
+        console.log(`[Scheduled Sync 2:00 AM] LMS synced: ${lmsRes.syncedCount} student records updated.`);
+      } catch (err: any) {
+        console.error(`[Scheduled Sync 2:00 AM] LMS sync error:`, err.message);
+      }
+
+      // 2. Apify LinkedIn Job Scraper Ingestion
+      try {
+        const apifyRes = await ApifyScraperService.fetchAndIngestJobs(adminActor, { limit: 50 });
+        console.log(`[Scheduled Sync 2:00 AM] Apify fetch completed: +${apifyRes.newIngested} new technology jobs.`);
+      } catch (err: any) {
+        console.warn(`[Scheduled Sync 2:00 AM] Apify fetch warning:`, err.message);
+      }
+
+      // 3. Public ATS Job APIs Ingestion (Greenhouse / Lever / Ashby)
+      try {
+        const atsRes = await AtsJobApiService.fetchAndIngestJobs(adminActor, { limit: 50 });
+        console.log(`[Scheduled Sync 2:00 AM] Public ATS fetch completed: +${atsRes.newIngested} new technology jobs.`);
+      } catch (err: any) {
+        console.warn(`[Scheduled Sync 2:00 AM] Public ATS fetch warning:`, err.message);
+      }
+    };
+
+    const getMsUntil2AM = (): { delayMs: number; nextDate: Date } => {
+      const now = new Date();
+      const target = new Date(now);
+      target.setHours(2, 0, 0, 0);
+      if (now.getTime() >= target.getTime()) {
+        target.setDate(target.getDate() + 1);
+      }
+      return { delayMs: target.getTime() - now.getTime(), nextDate: target };
+    };
+
+    const scheduleNext = () => {
+      const { delayMs, nextDate } = getMsUntil2AM();
+      console.log(`[Scheduler] Automated daily sync scheduled for 2:00 AM (${nextDate.toLocaleString()}). Delay: ${(delayMs / 1000 / 60).toFixed(1)} minutes.`);
+      setTimeout(async () => {
+        try {
+          await runScheduledSync();
+        } catch (e: any) {
+          console.error(`[Scheduler Execution Error]`, e);
+        }
+        scheduleNext();
+      }, delayMs);
+    };
+
+    scheduleNext();
+  };
+
+  // Schedule automated sync every day at 2:00 AM
+  scheduleDailySyncAt2AM();
+
+  // Integration schedule status endpoint
+  app.get('/api/v1/admin/integrations/schedule', (req, res) => {
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(2, 0, 0, 0);
+    if (now.getTime() >= target.getTime()) {
+      target.setDate(target.getDate() + 1);
+    }
+    res.json({
+      status: 'ACTIVE',
+      schedule: 'Daily at 2:00 AM',
+      nextScheduledRun: target.toISOString(),
+      services: [
+        'Academic LMS Synchronization',
+        'Apify LinkedIn Job Scraper',
+        'Public ATS APIs (Greenhouse, Lever, Ashby)'
+      ]
+    });
+  });
+
   // Auto-ingest Apify jobs on boot if Apify scraper is configured
   ApifyScraperService.fetchAndIngestJobs(
     { id: 'user-root-admin', name: 'System Administrator', role: 'MAIN_ADMIN' },

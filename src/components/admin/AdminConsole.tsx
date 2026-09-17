@@ -22,7 +22,8 @@ import {
   Sparkles,
   Search,
   ExternalLink,
-  Ban
+  Ban,
+  Clock
 } from 'lucide-react';
 
 interface AdminConsoleProps {
@@ -482,14 +483,10 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onRefreshData }) => 
               </p>
             </div>
 
-            <button
-              onClick={handleTriggerLmsSync}
-              disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Trigger Live LMS Sync
-            </button>
+            <div className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs">
+              <Clock className="w-3.5 h-3.5 text-blue-600" />
+              <span>Automated Daily Sync · 2:00 AM</span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
