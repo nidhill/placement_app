@@ -782,6 +782,10 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                   >
                     <option value="PLACEMENT_DIRECT">Placement Team Direct</option>
                     <option value="STAFF_REFERRAL">Staff Referral (Haris, Rizwan, etc.)</option>
+                    <option value="INBOUND">Inbound</option>
+                    <option value="OUTREACH">Outreach</option>
+                    <option value="REPEATED_PARTNER">Repeated Partner</option>
+                    <option value="SOCIAL_MEDIA">Social Media</option>
                     <option value="AI_JOB_SCRAPER">AI Job Scraper Agent (Apify)</option>
                   </select>
                 </div>

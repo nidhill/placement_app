@@ -77,7 +77,37 @@ export const SourceChannelBadge: React.FC<{ channel: JobSourceChannel } & BadgeP
     case 'PLACEMENT_DIRECT':
       return (
         <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200/60 whitespace-nowrap ${className}`}>
-          Placement Direct
+          Placement Team Direct
+        </span>
+      );
+    case 'INBOUND':
+      return (
+        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60 whitespace-nowrap ${className}`}>
+          Inbound
+        </span>
+      );
+    case 'OUTREACH':
+      return (
+        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200/60 whitespace-nowrap ${className}`}>
+          Outreach
+        </span>
+      );
+    case 'REPEATED_PARTNER':
+      return (
+        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200/60 whitespace-nowrap ${className}`}>
+          Repeated Partner
+        </span>
+      );
+    case 'SOCIAL_MEDIA':
+      return (
+        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200/60 whitespace-nowrap ${className}`}>
+          Social Media
+        </span>
+      );
+    default:
+      return (
+        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200/60 whitespace-nowrap ${className}`}>
+          {String(channel).replace('_', ' ')}
         </span>
       );
   }

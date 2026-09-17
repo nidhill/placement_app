@@ -56,6 +56,20 @@ const DECLINE_REASON_OPTIONS: { value: ApplicationDeclineReason; label: string }
   { value: 'OTHER', label: '12. Other reason (specified in comments below)' }
 ];
 
+const formatChannelName = (channel?: string) => {
+  switch (channel) {
+    case 'AI_JOB_SCRAPER': return 'AI Job Scraper';
+    case 'ATS_JOB_API': return 'ATS Public API';
+    case 'STAFF_REFERRAL': return 'Staff Referral';
+    case 'PLACEMENT_DIRECT': return 'Placement Team Direct';
+    case 'INBOUND': return 'Inbound';
+    case 'OUTREACH': return 'Outreach';
+    case 'REPEATED_PARTNER': return 'Repeated Partner';
+    case 'SOCIAL_MEDIA': return 'Social Media';
+    default: return (channel || '').replaceAll('_', ' ');
+  }
+};
+
 interface StudentPortalViewProps {
   currentStudentId?: string;
   activeTab?: NavigationItem;
@@ -186,7 +200,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
     loadData();
   }, [currentStudentId]);
 
-  const handleExternalApply = (job: JobListing) => {
+  const handleExternalApply = async (job: JobListing) => {
     if (!profile) return;
     const targetUrl = job.applicationUrl || 
                       job.externalUrl || 
@@ -196,25 +210,54 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                       (job as any).jobUrl || 
                       `https://www.google.com/search?q=${encodeURIComponent(job.company + ' ' + job.title + ' apply')}`;
 
-    // Synchronous window.open MUST happen immediately during click handler execution to avoid popup blocker blocking!
+    // 1. Immediately open the official application URL in a new browser tab (synchronous during click to avoid popup blocker)
     window.open(targetUrl, '_blank');
 
+    // 2. Immediately close the job detail modal
+    setSelectedJobForModal(null);
     setApplyingJobId(job.id);
     setApplySuccessMessage(null);
 
-    api.applyForJob(job.id, currentStudentId)
-      .then(res => {
-        setSelectedJobForModal(null);
-        setConfirmationApp(res.application);
-        loadData();
-        if (onRefreshData) onRefreshData();
-      })
-      .catch(err => {
-        console.error('Application registration error:', err);
-      })
-      .finally(() => {
-        setApplyingJobId(null);
-      });
+    // 3. Immediately show the existing "Official Portal Opened" confirmation modal
+    const existing = myApplications.find(a => a.jobId === job.id);
+    const initialModalApp: JobApplication = existing || {
+      id: `pending-${job.id}`,
+      jobId: job.id,
+      jobTitle: job.title,
+      company: job.company,
+      location: job.location,
+      studentId: currentStudentId,
+      studentName: profile.fullName,
+      studentEmail: profile.email,
+      school: profile.school,
+      program: profile.program,
+      batch: profile.batch,
+      sourceChannel: job.sourceChannel,
+      jobSource: formatChannelName(job.sourceChannel) || 'Placement Team Direct',
+      applicationUrl: targetUrl,
+      status: 'APPLICATION_STARTED',
+      startedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      appliedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      interviewDates: []
+    };
+
+    setConfirmationApp(initialModalApp);
+
+    // 4. Create or update the shared application record in the backend (status = APPLICATION_STARTED)
+    try {
+      const res = await api.applyForJob(job.id, currentStudentId);
+      if (res?.application) {
+        setConfirmationApp(prev => (prev && prev.jobId === job.id ? res.application : prev));
+      }
+      await loadData();
+      if (onRefreshData) onRefreshData();
+    } catch (err: any) {
+      console.error('Application registration error:', err);
+    } finally {
+      setApplyingJobId(null);
+    }
   };
 
   const handleContinueExternalApply = (app: JobApplication) => {
@@ -226,7 +269,13 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   const handleConfirmApplication = async (appId: string) => {
     setSubmittingConfirmDecline(true);
     try {
-      await api.confirmApplication(appId);
+      let targetId = appId;
+      if (targetId.startsWith('pending-')) {
+        const jobId = targetId.replace('pending-', '');
+        const res = await api.applyForJob(jobId, currentStudentId);
+        targetId = res.application.id;
+      }
+      await api.confirmApplication(targetId);
       setConfirmationApp(null);
       setApplySuccessMessage('Great job! Your application status has been confirmed as APPLIED.');
       setTimeout(() => setApplySuccessMessage(null), 5000);
@@ -251,7 +300,13 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
     if (!declineApp) return;
     setSubmittingConfirmDecline(true);
     try {
-      await api.declineApplication(declineApp.id, {
+      let targetId = declineApp.id;
+      if (targetId.startsWith('pending-')) {
+        const jobId = targetId.replace('pending-', '');
+        const res = await api.applyForJob(jobId, currentStudentId);
+        targetId = res.application.id;
+      }
+      await api.declineApplication(targetId, {
         declineReason,
         studentComment: declineComment,
         needsHelp
@@ -1466,7 +1521,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 })
                 .map(rec => {
                   const job = rec.job;
-                  const alreadyApplied = myApplications.some(a => a.jobId === job.id);
+                  const alreadyApplied = myApplications.some(a => a.jobId === job.id && a.status === 'APPLIED');
                   const matchScore = rec.matchScore ?? 80;
 
                   return (
@@ -1561,7 +1616,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
                       <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
                         <span className="text-[11px] text-slate-400">
-                          Source: <strong className="text-slate-700">{job.sourceChannel === 'AI_JOB_SCRAPER' ? 'AI Job Scraper' : job.sourceChannel.replace('_', ' ')}</strong>
+                          Source: <strong className="text-slate-700">{formatChannelName(job.sourceChannel)}</strong>
                         </span>
 
                         {alreadyApplied ? (
@@ -1617,7 +1672,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   return true;
                 })
                 .map(job => {
-                  const alreadyApplied = myApplications.some(a => a.jobId === job.id);
+                  const alreadyApplied = myApplications.some(a => a.jobId === job.id && a.status === 'APPLIED');
                   const matchingRec = recommendedJobs.find(r => r.job.id === job.id);
 
                   return (
@@ -1676,7 +1731,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
                       <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
                         <span className="text-[11px] text-slate-400">
-                          Source: <strong className="text-slate-700">{job.sourceChannel === 'AI_JOB_SCRAPER' ? 'AI Job Scraper' : job.sourceChannel.replace('_', ' ')}</strong>
+                          Source: <strong className="text-slate-700">{formatChannelName(job.sourceChannel)}</strong>
                         </span>
 
                         {alreadyApplied ? (
@@ -2171,7 +2226,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                       className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs disabled:opacity-60 cursor-pointer"
                     >
                       <ExternalLink className="w-4 h-4 text-blue-200" />
-                      <span>{isApplying ? 'Opening...' : 'Apply ↗'}</span>
+                      <span>{isApplying ? 'Opening Portal...' : 'Apply on Official Job Portal ↗'}</span>
                     </button>
                   );
                 })()}
@@ -2343,7 +2398,12 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           CONFIRMATION MODAL (Did you complete application?)
           ========================================================= */}
       {confirmationApp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setConfirmationApp(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+        >
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150 p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">

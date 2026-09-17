@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { JobListing, JobMatchResult, StudentProfile } from '../../types.ts';
+import { JobListing, JobMatchResult, StudentProfile, JobSourceChannel } from '../../types.ts';
 import { api } from '../../lib/api.ts';
 import { SourceChannelBadge, MatchVerdictBadge } from '../common/StatusBadge.tsx';
 import { 
@@ -110,7 +110,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
   const [newSalary, setNewSalary] = useState('');
   const [newSkills, setNewSkills] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [newChannel, setNewChannel] = useState<'PLACEMENT_DIRECT' | 'STAFF_REFERRAL' | 'AI_JOB_SCRAPER'>('PLACEMENT_DIRECT');
+  const [newChannel, setNewChannel] = useState<JobSourceChannel>('PLACEMENT_DIRECT');
   const [newJobRole, setNewJobRole] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -466,10 +466,14 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
             className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
           >
             <option value="ALL">Source: All Sources</option>
-            <option value="AI_JOB_SCRAPER">AI Job Scraper (LinkedIn / Apify)</option>
-            <option value="ATS_JOB_API">ATS Public API (Greenhouse / Lever / Ashby)</option>
             <option value="PLACEMENT_DIRECT">Placement Team Direct</option>
             <option value="STAFF_REFERRAL">Staff Referral</option>
+            <option value="INBOUND">Inbound</option>
+            <option value="OUTREACH">Outreach</option>
+            <option value="REPEATED_PARTNER">Repeated Partner</option>
+            <option value="SOCIAL_MEDIA">Social Media</option>
+            <option value="AI_JOB_SCRAPER">AI Job Scraper (LinkedIn / Apify)</option>
+            <option value="ATS_JOB_API">ATS Public API (Greenhouse / Lever / Ashby)</option>
           </select>
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
@@ -1062,11 +1066,15 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                 <label className="block text-slate-700 font-medium mb-1">Sourcing Channel</label>
                 <select
                   value={newChannel}
-                  onChange={e => setNewChannel(e.target.value as any)}
+                  onChange={e => setNewChannel(e.target.value as JobSourceChannel)}
                   className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs cursor-pointer"
                 >
                   <option value="PLACEMENT_DIRECT">Placement Team Direct</option>
                   <option value="STAFF_REFERRAL">Staff Referral</option>
+                  <option value="INBOUND">Inbound</option>
+                  <option value="OUTREACH">Outreach</option>
+                  <option value="REPEATED_PARTNER">Repeated Partner</option>
+                  <option value="SOCIAL_MEDIA">Social Media</option>
                 </select>
               </div>
 

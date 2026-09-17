@@ -272,7 +272,7 @@ export default function App() {
         )}
 
         {/* Main Dashboard / View Area - Natural scrolling and responsive container */}
-        <main key={refreshTrigger} className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
           {currentUser.role === 'STUDENT' ? (
             <StudentPortalView 
               currentStudentId={currentUser.id}

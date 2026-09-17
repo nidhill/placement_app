@@ -16,7 +16,11 @@ export type JobSourceChannel =
   | 'AI_JOB_SCRAPER' 
   | 'ATS_JOB_API'
   | 'STAFF_REFERRAL' 
-  | 'PLACEMENT_DIRECT';
+  | 'PLACEMENT_DIRECT'
+  | 'INBOUND'
+  | 'OUTREACH'
+  | 'REPEATED_PARTNER'
+  | 'SOCIAL_MEDIA';
 
 export type ApplicationStatus = 
   | 'APPLICATION_STARTED'   // Student clicked Apply, external portal opened
@@ -265,6 +269,7 @@ export interface JobApplication {
   helpUpdatedBy?: string;      // Name of Placement Officer who updated helpStatus
   // --- Existing fields ---
   appliedAt: string;           // Keep for backward compat (same as startedAt)
+  createdAt?: string;          // Timestamp when application was created
   updatedAt: string;
   interviewDates: {
     round: number;

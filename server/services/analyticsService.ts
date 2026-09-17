@@ -140,7 +140,12 @@ export class AnalyticsService {
     const channels: { key: JobSourceChannel; label: string }[] = [
       { key: 'PLACEMENT_DIRECT', label: 'Placement Team Direct Outreach' },
       { key: 'STAFF_REFERRAL', label: 'Staff & Faculty Referrals' },
+      { key: 'INBOUND', label: 'Inbound' },
+      { key: 'OUTREACH', label: 'Outreach' },
+      { key: 'REPEATED_PARTNER', label: 'Repeated Partner' },
+      { key: 'SOCIAL_MEDIA', label: 'Social Media' },
       { key: 'AI_JOB_SCRAPER', label: 'AI Job Scraper Agent (Apify)' },
+      { key: 'ATS_JOB_API', label: 'ATS Public API' },
     ];
 
     const channelMetrics = channels.map(c => {

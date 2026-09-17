@@ -484,8 +484,18 @@ class DatabaseStore {
     // Determine human-readable source label
     const sourceLabel = job.sourceChannel === 'AI_JOB_SCRAPER' 
       ? 'AI Job Scraper (Apify)'
+      : job.sourceChannel === 'ATS_JOB_API'
+      ? 'ATS Public API'
       : job.sourceChannel === 'STAFF_REFERRAL'
       ? 'Staff & Faculty Referral'
+      : job.sourceChannel === 'INBOUND'
+      ? 'Inbound'
+      : job.sourceChannel === 'OUTREACH'
+      ? 'Outreach'
+      : job.sourceChannel === 'REPEATED_PARTNER'
+      ? 'Repeated Partner'
+      : job.sourceChannel === 'SOCIAL_MEDIA'
+      ? 'Social Media'
       : 'Placement Team Direct';
 
     // Resolve the external application URL from job fields
@@ -508,6 +518,7 @@ class DatabaseStore {
       applicationUrl,
       status: 'APPLICATION_STARTED',
       startedAt: now,
+      createdAt: now,
       appliedAt: now,
       updatedAt: now,
       interviewDates: []
