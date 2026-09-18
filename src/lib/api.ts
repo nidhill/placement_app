@@ -22,125 +22,155 @@ import {
   AtsConnectionStatus
 } from '../types.ts';
 
+// Where the SHO server lives. Local dev leaves this empty and lets Vite proxy
+// /api. In production the value must be just the origin; we still pull the
+// URL out of it (a pasted "VITE_API_URL = https://…" once produced requests
+// to "/VITE_API_URL%20=%20…/api/auth/login") and fall back to the live server.
+const PROD_API = 'https://ecoapi.harisandcoacademy.com';
+const API_BASE = (() => {
+  const raw = String(import.meta.env.VITE_API_URL || '');
+  const m = raw.match(/https?:\/\/[^\s"']+/);
+  if (m) return m[0].replace(/\/+$/, '');
+  return import.meta.env.DEV ? '' : PROD_API;
+})();
+const TOKEN_KEY = 'placement_token';
+
+export function getToken(): string | null { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } }
+export function setToken(t: string | null) { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ } }
+
 class ApiClient {
-  private activeUserId: string = 'user-root-admin';
-  private activeUserRole: UserRole = 'MAIN_ADMIN';
-
-  public setActiveUser(user: User) {
-    this.activeUserId = user.id;
-    this.activeUserRole = user.role;
-  }
-
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'x-user-id': this.activeUserId,
-      'x-user-role': this.activeUserRole,
       ...(options.headers as Record<string, string> || {})
     };
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
 
-    const response = await fetch(endpoint, {
-      ...options,
-      headers
-    });
-
-    const data = await response.json();
+    const response = await fetch(API_BASE + endpoint, { ...options, headers });
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      const errorMsg = data.error || data.reason || `HTTP Error ${response.status}`;
+      const errorMsg = data.error || data.message || data.reason || `HTTP Error ${response.status}`;
       const err = new Error(errorMsg) as any;
       err.status = response.status;
       err.data = data;
       throw err;
     }
-
     return data as T;
   }
 
-  // Auth & Users
-  public async login(email: string): Promise<{ user: User; studentProfile?: StudentProfile; token: string }> {
-    return this.request('/api/v1/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email })
-    });
+  // Auth: staff sign in through the SHO App, students through the LMS. Both
+  // issue a JWT this server accepts on /api/placement/*.
+  public async loginStaff(email: string, password: string): Promise<{ token: string }> {
+    const r = await this.request<{ token: string }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+    setToken(r.token);
+    return r;
+  }
+  public async loginStudent(email: string, password: string): Promise<{ token: string }> {
+    const r = await this.request<{ token: string }>('/api/lms/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+    setToken(r.token);
+    return r;
+  }
+  public logout() { setToken(null); }
+  /** Who the token belongs to, in placement terms. 403 for a student not yet approved. */
+  public async me(): Promise<{ user: User; studentProfile?: StudentProfile }> {
+    return this.request('/api/placement/me');
   }
 
+  // Users
   public async getUsers(): Promise<{ users: User[] }> {
-    return this.request('/api/v1/auth/users');
+    return this.request('/api/placement/auth/users');
   }
 
   // Admin
   public async provisionUser(userData: { email: string; fullName: string; role: UserRole; department: string }): Promise<{ user: User; message: string }> {
-    return this.request('/api/v1/admin/users/provision', {
+    return this.request('/api/placement/admin/users/provision', {
       method: 'POST',
       body: JSON.stringify(userData)
     });
   }
 
   public async revokeUser(userId: string): Promise<{ user: User; message: string }> {
-    return this.request(`/api/v1/admin/users/${userId}/revoke`, {
+    return this.request(`/api/placement/admin/users/${userId}/revoke`, {
       method: 'POST'
     });
   }
 
+  public async restoreUser(userId: string): Promise<{ user: User; message: string }> {
+    return this.request(`/api/placement/admin/users/${userId}/restore`, { method: 'POST' });
+  }
+
+  public async changeUserRole(userId: string, role: UserRole): Promise<{ user: User; message: string }> {
+    return this.request(`/api/placement/admin/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) });
+  }
+
+  public async deleteUser(userId: string): Promise<{ user: User; message: string }> {
+    return this.request(`/api/placement/admin/users/${userId}`, { method: 'DELETE' });
+  }
+
   public async overrideEligibility(studentId: string, newStatus: EligibilityStatus, reason: string): Promise<{ student: StudentProfile; message: string }> {
-    return this.request('/api/v1/admin/override-eligibility', {
+    return this.request('/api/placement/admin/override-eligibility', {
       method: 'POST',
       body: JSON.stringify({ studentId, newStatus, reason })
     });
   }
 
   public async getAuditLogs(): Promise<{ auditLogs: AuditLog[] }> {
-    return this.request('/api/v1/admin/audit-logs');
+    return this.request('/api/placement/admin/audit-logs');
   }
 
   // Integrations
   public async getLmsConfig(): Promise<LmsSyncConfig> {
-    return this.request('/api/v1/admin/integrations/lms');
+    return this.request('/api/placement/admin/integrations/lms');
   }
 
   public async updateLmsConfig(updates: Partial<LmsSyncConfig>): Promise<LmsSyncConfig> {
-    return this.request('/api/v1/admin/integrations/lms', {
+    return this.request('/api/placement/admin/integrations/lms', {
       method: 'PATCH',
       body: JSON.stringify(updates)
     });
   }
 
   public async syncLms(): Promise<{ syncedCount: number; updatedCount: number; newStudents: string[] }> {
-    return this.request('/api/v1/admin/integrations/lms/sync', {
+    return this.request('/api/placement/admin/integrations/lms/sync', {
       method: 'POST'
     });
   }
 
+  public async getIntegrationSchedule(): Promise<{ status: string; schedule: string; nextScheduledRun: string; services: string[] }> {
+    return this.request('/api/placement/admin/integrations/schedule');
+  }
+
   public async getApifyConfig(): Promise<ApifyScraperConfig> {
-    return this.request('/api/v1/admin/integrations/apify');
+    return this.request('/api/placement/admin/integrations/apify');
   }
 
   public async updateApifyConfig(updates: Partial<ApifyScraperConfig>): Promise<ApifyScraperConfig> {
-    return this.request('/api/v1/admin/integrations/apify', {
+    return this.request('/api/placement/admin/integrations/apify', {
       method: 'PATCH',
       body: JSON.stringify(updates)
     });
   }
 
   public async runApifyScraper(): Promise<{ ingestedCount: number; skippedDuplicatesCount: number; newJobTitles: string[] }> {
-    return this.request('/api/v1/admin/integrations/apify/run', {
+    return this.request('/api/placement/admin/integrations/apify/run', {
       method: 'POST'
     });
   }
 
   public async getApifyStatus(): Promise<ApifyConnectionStatus> {
-    return this.request('/api/v1/admin/integrations/apify/status');
+    return this.request('/api/placement/admin/integrations/apify/status');
   }
 
   public async testApifyConnection(): Promise<{ success: boolean; status: ApifyConnectionStatus; message: string }> {
-    return this.request('/api/v1/admin/integrations/apify/test', {
+    return this.request('/api/placement/admin/integrations/apify/test', {
       method: 'POST'
     });
   }
 
   public async fetchApifyJobs(options?: { limit?: number }): Promise<ApifyFetchResult> {
-    return this.request('/api/v1/admin/integrations/apify/fetch', {
+    return this.request('/api/placement/admin/integrations/apify/fetch', {
       method: 'POST',
       body: JSON.stringify(options || {})
     });
@@ -148,28 +178,28 @@ class ApiClient {
 
   // --- PUBLIC ATS JOB API INTEGRATION ---
   public async getAtsConfig(): Promise<AtsSyncConfig> {
-    return this.request('/api/v1/admin/integrations/ats');
+    return this.request('/api/placement/admin/integrations/ats');
   }
 
   public async updateAtsConfig(updates: Partial<AtsSyncConfig>): Promise<AtsSyncConfig> {
-    return this.request('/api/v1/admin/integrations/ats', {
+    return this.request('/api/placement/admin/integrations/ats', {
       method: 'PATCH',
       body: JSON.stringify(updates)
     });
   }
 
   public async getAtsStatus(): Promise<AtsConnectionStatus> {
-    return this.request('/api/v1/admin/integrations/ats/status');
+    return this.request('/api/placement/admin/integrations/ats/status');
   }
 
   public async testAtsConnection(): Promise<{ success: boolean; status: AtsConnectionStatus; message: string }> {
-    return this.request('/api/v1/admin/integrations/ats/test', {
+    return this.request('/api/placement/admin/integrations/ats/test', {
       method: 'POST'
     });
   }
 
   public async fetchAtsJobs(options?: { limit?: number }): Promise<AtsJobFetchResult> {
-    return this.request('/api/v1/admin/integrations/ats/fetch', {
+    return this.request('/api/placement/admin/integrations/ats/fetch', {
       method: 'POST',
       body: JSON.stringify(options || {})
     });
@@ -178,18 +208,18 @@ class ApiClient {
   // Mentors
   public async getMentorStudents(mentorId?: string): Promise<{ students: StudentProfile[] }> {
     const query = mentorId ? `?mentorId=${mentorId}` : '';
-    return this.request(`/api/v1/mentor/students${query}`);
+    return this.request(`/api/placement/mentor/students${query}`);
   }
 
   public async toggleEligibility(studentId: string, isEligible: boolean, evaluationNotes: string): Promise<{ student: StudentProfile; message: string }> {
-    return this.request(`/api/v1/mentor/students/${studentId}/eligibility`, {
+    return this.request(`/api/placement/mentor/students/${studentId}/eligibility`, {
       method: 'PATCH',
       body: JSON.stringify({ isEligible, evaluationNotes })
     });
   }
 
   public async setAdminStudentEligibility(studentId: string, isEligible: boolean, evaluationNotes?: string): Promise<{ student: StudentProfile; message: string }> {
-    return this.request(`/api/v1/admin/students/${studentId}/eligibility`, {
+    return this.request(`/api/placement/admin/students/${studentId}/eligibility`, {
       method: 'PATCH',
       body: JSON.stringify({ isEligible, evaluationNotes })
     });
@@ -197,18 +227,18 @@ class ApiClient {
 
   // Students
   public async getStudent(id: string): Promise<{ student: StudentProfile }> {
-    return this.request(`/api/v1/students/${id}`);
+    return this.request(`/api/placement/students/${id}`);
   }
 
   public async updateStudent(id: string, updates: Partial<StudentProfile>): Promise<{ student: StudentProfile }> {
-    return this.request(`/api/v1/students/${id}`, {
+    return this.request(`/api/placement/students/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(updates)
     });
   }
 
   public async getStudentRecommendations(id: string): Promise<{ recommendations: JobMatchResult[] }> {
-    return this.request(`/api/v1/students/${id}/recommendations`);
+    return this.request(`/api/placement/students/${id}/recommendations`);
   }
 
   // Jobs
@@ -220,24 +250,24 @@ class ApiClient {
     if (params?.category) searchParams.set('category', params.category);
     if (params?.designation) searchParams.set('designation', params.designation);
     const qs = searchParams.toString() ? `?${searchParams.toString()}` : '';
-    return this.request(`/api/v1/jobs${qs}`);
+    return this.request(`/api/placement/jobs${qs}`);
   }
 
   public async createJob(jobData: any): Promise<{ job: JobListing; message: string }> {
-    return this.request('/api/v1/jobs', {
+    return this.request('/api/placement/jobs', {
       method: 'POST',
       body: JSON.stringify(jobData)
     });
   }
 
   public async deleteJob(jobId: string): Promise<{ success: boolean; message: string }> {
-    return this.request(`/api/v1/jobs/${jobId}`, {
+    return this.request(`/api/placement/jobs/${jobId}`, {
       method: 'DELETE'
     });
   }
 
   public async getJobCandidates(jobId: string): Promise<{ job: JobListing; candidates: { student: StudentProfile; match: JobMatchResult }[] }> {
-    return this.request(`/api/v1/jobs/${jobId}/candidates`);
+    return this.request(`/api/placement/jobs/${jobId}/candidates`);
   }
 
   // Applications
@@ -249,7 +279,7 @@ class ApiClient {
     if (params?.batch) searchParams.set('batch', params.batch);
     if (params?.status) searchParams.set('status', params.status);
     const qs = searchParams.toString() ? `?${searchParams.toString()}` : '';
-    return this.request(`/api/v1/applications${qs}`);
+    return this.request(`/api/placement/applications${qs}`);
   }
 
   public async applyForJob(jobId: string, studentId?: string): Promise<{
@@ -258,14 +288,14 @@ class ApiClient {
     isNew: boolean;
     message: string;
   }> {
-    return this.request('/api/v1/applications', {
+    return this.request('/api/placement/applications', {
       method: 'POST',
       body: JSON.stringify({ jobId, studentId })
     });
   }
 
   public async confirmApplication(applicationId: string): Promise<{ application: JobApplication; message: string }> {
-    return this.request(`/api/v1/applications/${applicationId}/confirm`, {
+    return this.request(`/api/placement/applications/${applicationId}/confirm`, {
       method: 'POST'
     });
   }
@@ -275,28 +305,28 @@ class ApiClient {
     studentComment?: string;
     needsHelp: boolean;
   }): Promise<{ application: JobApplication; message: string }> {
-    return this.request(`/api/v1/applications/${applicationId}/decline`, {
+    return this.request(`/api/placement/applications/${applicationId}/decline`, {
       method: 'POST',
       body: JSON.stringify(data)
     });
   }
 
   public async updateHelpStatus(applicationId: string, helpStatus: HelpStatus): Promise<{ application: JobApplication; message: string }> {
-    return this.request(`/api/v1/applications/${applicationId}/help-status`, {
+    return this.request(`/api/placement/applications/${applicationId}/help-status`, {
       method: 'PATCH',
       body: JSON.stringify({ helpStatus })
     });
   }
 
   public async updateApplicationStatus(applicationId: string, status: ApplicationStatus): Promise<{ application: JobApplication; message: string }> {
-    return this.request(`/api/v1/applications/${applicationId}/status`, {
+    return this.request(`/api/placement/applications/${applicationId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status })
     });
   }
 
   public async withdrawApplication(applicationId: string): Promise<{ success: boolean; message: string }> {
-    return this.request(`/api/v1/applications/${applicationId}`, {
+    return this.request(`/api/placement/applications/${applicationId}`, {
       method: 'DELETE'
     });
   }
@@ -310,7 +340,7 @@ class ApiClient {
       roundTitle = roundTitleOrData.title || roundTitleOrData.roundTitle || 'Technical Round';
       date = roundTitleOrData.date || date;
     }
-    return this.request(`/api/v1/applications/${applicationId}/interviews`, {
+    return this.request(`/api/placement/applications/${applicationId}/interviews`, {
       method: 'POST',
       body: JSON.stringify({ roundTitle, date })
     });
@@ -318,7 +348,7 @@ class ApiClient {
 
   // Feedback
   public async getRejectionFeedbacks(): Promise<{ feedbackRecords: RejectionFeedbackRecord[] }> {
-    return this.request('/api/v1/feedback/rejection');
+    return this.request('/api/placement/feedback/rejection');
   }
 
   public async submitRejectionFeedback(dataOrAppId: string | { applicationId: string; category: RejectionCategory; details: string; remedialActionNeeded?: string }, secondArg?: { category: RejectionCategory; details: string; remedialActionNeeded?: string }): Promise<{ feedback: RejectionFeedbackRecord; message: string }> {
@@ -331,7 +361,7 @@ class ApiClient {
     } else {
       payload = dataOrAppId;
     }
-    return this.request('/api/v1/feedback/rejection', {
+    return this.request('/api/placement/feedback/rejection', {
       method: 'POST',
       body: JSON.stringify(payload)
     });
@@ -339,7 +369,7 @@ class ApiClient {
 
   // Analytics
   public async getAnalytics(): Promise<ManagementKPIs> {
-    return this.request('/api/v1/analytics/overview');
+    return this.request('/api/placement/analytics/overview');
   }
 
   // Convenience aliases for Modern Academic UI components
@@ -423,24 +453,19 @@ class ApiClient {
     fileType: string;
     dataUrl: string;
   }): Promise<{ student: StudentProfile; message: string }> {
-    return this.request(`/api/v1/students/${studentId}/resume`, {
+    return this.request(`/api/placement/students/${studentId}/resume`, {
       method: 'POST',
       body: JSON.stringify(data)
     });
   }
 
   public async deleteStudentResume(studentId: string): Promise<{ student: StudentProfile; message: string }> {
-    return this.request(`/api/v1/students/${studentId}/resume`, {
+    return this.request(`/api/placement/students/${studentId}/resume`, {
       method: 'DELETE'
     });
   }
 
   // Reset
-  public async resetSystem(): Promise<{ message: string }> {
-    return this.request('/api/v1/system/reset', {
-      method: 'POST'
-    });
-  }
 }
 
 export const api = new ApiClient();

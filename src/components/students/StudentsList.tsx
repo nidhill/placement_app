@@ -71,7 +71,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
     const interviewCount = studentApps.filter(a => a.status === 'INTERVIEW' || (a.interviewRounds && a.interviewRounds.length > 0)).length;
     
     let statusLabel = 'Seeking';
-    let statusBadgeColor = 'bg-slate-100 text-slate-700 border-slate-200';
+    let statusBadgeColor = 'bg-muted text-slate-700 border-border';
 
     if (studentApps.some(a => a.status === 'JOINED')) {
       statusLabel = 'Placed';
@@ -124,7 +124,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Students</h2>
+          <h2 className="text-xl font-semibold text-foreground tracking-tight">Students</h2>
           <p className="text-xs text-slate-500 mt-0.5">
             {students.length} total students enrolled · {students.filter(s => s.eligibilityStatus === 'ELIGIBLE' || s.eligibilityStatus === 'ADMIN_OVERRIDE').length} eligible for placement
           </p>
@@ -140,7 +140,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
               placeholder="Search students, skills..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 text-slate-800"
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-slate-800"
             />
           </div>
 
@@ -149,7 +149,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
             <select
               value={schoolFilter}
               onChange={e => setSchoolFilter(e.target.value)}
-              className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs py-1.5 pl-2.5 pr-6 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+              className="appearance-none bg-white border border-border text-slate-700 text-xs py-1.5 pl-2.5 pr-6 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
             >
               <option value="ALL">All Schools</option>
               <option value="School of Tech">School of Tech</option>
@@ -164,7 +164,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
             <select
               value={programFilter}
               onChange={e => setProgramFilter(e.target.value)}
-              className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs py-1.5 pl-2.5 pr-6 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer max-w-[130px] truncate"
+              className="appearance-none bg-white border border-border text-slate-700 text-xs py-1.5 pl-2.5 pr-6 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer max-w-[130px] truncate"
             >
               <option value="ALL">All Programs</option>
               {programs.map(p => (
@@ -179,7 +179,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
             <select
               value={batchFilter}
               onChange={e => setBatchFilter(e.target.value)}
-              className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs py-1.5 pl-2.5 pr-6 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+              className="appearance-none bg-white border border-border text-slate-700 text-xs py-1.5 pl-2.5 pr-6 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
             >
               <option value="ALL">All Batches</option>
               {batches.map(b => (
@@ -194,7 +194,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
             <select
               value={eligibilityFilter}
               onChange={e => setEligibilityFilter(e.target.value)}
-              className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs py-1.5 pl-2.5 pr-6 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+              className="appearance-none bg-white border border-border text-slate-700 text-xs py-1.5 pl-2.5 pr-6 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
             >
               <option value="ALL">All Eligibility</option>
               <option value="ELIGIBLE">Eligible</option>
@@ -210,7 +210,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
             <select
               value={placementStatusFilter}
               onChange={e => setPlacementStatusFilter(e.target.value)}
-              className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs py-1.5 pl-2.5 pr-6 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+              className="appearance-none bg-white border border-border text-slate-700 text-xs py-1.5 pl-2.5 pr-6 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
             >
               <option value="ALL">All Placement Status</option>
               <option value="Placed">Placed</option>
@@ -225,10 +225,10 @@ export const StudentsList: React.FC<StudentsListProps> = ({
       </div>
 
       {/* Clean Spacious Students Table */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/70 border-b border-slate-200/80 text-slate-500 font-medium">
+            <thead className="bg-muted/60 border-b border-border text-slate-500 font-medium">
               <tr>
                 <th className="py-3 px-4">Student</th>
                 <th className="py-3 px-4">Program</th>
@@ -241,7 +241,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border/70">
               {filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-slate-400 text-xs">
@@ -255,16 +255,16 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                     <tr 
                       key={student.id} 
                       onClick={() => setSelectedStudent(student)}
-                      className="hover:bg-slate-50/60 transition-colors cursor-pointer group"
+                      className="hover:bg-muted/60 transition-colors cursor-pointer group"
                     >
                       {/* Student info */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-semibold text-slate-700 text-xs shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center font-semibold text-slate-700 text-xs shrink-0">
                             {student.fullName.charAt(0)}
                           </div>
                           <div>
-                            <div className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                            <div className="font-semibold text-foreground group-hover:text-blue-600 transition-colors">
                               {student.fullName}
                             </div>
                             <div className="text-[11px] text-slate-400 font-mono">
@@ -302,7 +302,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                       {/* Applications count */}
                       <td className="py-3 px-4 text-center">
                         <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
-                          pData.appCount > 0 ? 'bg-slate-100 text-slate-800' : 'text-slate-400'
+                          pData.appCount > 0 ? 'bg-muted text-slate-800' : 'text-slate-400'
                         }`}>
                           {pData.appCount}
                         </span>
@@ -331,7 +331,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                             e.stopPropagation();
                             setSelectedStudent(student);
                           }}
-                          className="px-2.5 py-1 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 rounded-md transition-colors inline-flex items-center gap-1.5"
+                          className="px-2.5 py-1 text-xs font-semibold text-slate-700 hover:text-foreground bg-muted hover:bg-secondary rounded-md transition-colors inline-flex items-center gap-1.5"
                           title="Open Student Profile"
                         >
                           <UserIcon className="w-3.5 h-3.5 text-slate-500" />
@@ -349,19 +349,19 @@ export const StudentsList: React.FC<StudentsListProps> = ({
 
       {/* STUDENT PROFILE ACADEMIC RECORD MODAL / DRAWER */}
       {selectedStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/30 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl border border-border w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 flex items-start justify-between">
+            <div className="p-5 border-b border-border/70 flex items-start justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-800 text-sm">
+                <div className="w-12 h-12 rounded-full bg-muted border border-border flex items-center justify-center font-bold text-slate-800 text-sm">
                   {selectedStudent.fullName.charAt(0)}
                 </div>
                 <div>
                   <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Student Profile Record</div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <h3 className="text-base font-bold text-slate-900">{selectedStudent.fullName}</h3>
+                    <h3 className="text-base font-bold text-foreground">{selectedStudent.fullName}</h3>
                     <EligibilityBadge status={selectedStudent.eligibilityStatus} />
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
@@ -385,7 +385,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
 
               <button
                 onClick={() => setSelectedStudent(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-muted transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -396,34 +396,34 @@ export const StudentsList: React.FC<StudentsListProps> = ({
               
               {/* 1. Academic Overview */}
               <div>
-                <h4 className="font-semibold text-slate-900 uppercase tracking-wider text-[11px] mb-3 text-slate-400">
+                <h4 className="font-semibold text-foreground uppercase tracking-wider text-[11px] mb-3 text-slate-400">
                   Academic Overview
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="p-3 bg-muted rounded-lg border border-border/70">
                     <span className="text-[11px] text-slate-400 block">Academic Progress</span>
-                    <span className="text-base font-bold text-slate-900 mt-0.5 block">
+                    <span className="text-base font-bold text-foreground mt-0.5 block">
                       {selectedStudent.academic.scores.gpaOrPercentage}%
                     </span>
                   </div>
 
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="p-3 bg-muted rounded-lg border border-border/70">
                     <span className="text-[11px] text-slate-400 block">Attendance</span>
-                    <span className="text-base font-bold text-slate-900 mt-0.5 block">
+                    <span className="text-base font-bold text-foreground mt-0.5 block">
                       {selectedStudent.academic.attendancePercentage}%
                     </span>
                   </div>
 
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="p-3 bg-muted rounded-lg border border-border/70">
                     <span className="text-[11px] text-slate-400 block">Assignments</span>
-                    <span className="text-base font-bold text-slate-900 mt-0.5 block">
+                    <span className="text-base font-bold text-foreground mt-0.5 block">
                       {selectedStudent.academic.scores.assignmentsCompleted} / {selectedStudent.academic.scores.totalAssignments}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="p-3 bg-muted rounded-lg border border-border/70">
                     <span className="text-[11px] text-slate-400 block">Capstone Project</span>
-                    <span className="text-base font-bold text-slate-900 mt-0.5 block">
+                    <span className="text-base font-bold text-foreground mt-0.5 block">
                       {selectedStudent.academic.scores.capstoneScore ? `${selectedStudent.academic.scores.capstoneScore}%` : 'Pending'}
                     </span>
                   </div>
@@ -434,7 +434,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                   <span className="text-[11px] text-slate-400 block mb-1.5">Acquired Technical Skills</span>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedStudent.academic.skills.map(s => (
-                      <span key={s} className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium">
+                      <span key={s} className="px-2 py-0.5 rounded bg-muted text-slate-700 text-[11px] font-medium">
                         {s}
                       </span>
                     ))}
@@ -444,11 +444,11 @@ export const StudentsList: React.FC<StudentsListProps> = ({
 
               {/* 2. Placement Checklist */}
               <div>
-                <h4 className="font-semibold text-slate-900 uppercase tracking-wider text-[11px] mb-3 text-slate-400">
+                <h4 className="font-semibold text-foreground uppercase tracking-wider text-[11px] mb-3 text-slate-400">
                   Placement Checklist
                 </h4>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center justify-between p-2.5 rounded-lg border border-border/70 bg-muted/60">
                     <div className="flex items-center gap-2 text-slate-800">
                       {(selectedStudent.resumeUrl || selectedStudent.resumeDataUrl || selectedStudent.resumeFileName) ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -470,7 +470,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center justify-between p-2.5 rounded-lg border border-border/70 bg-muted/60">
                     <div className="flex items-center gap-2 text-slate-800">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>Required Curriculum Competencies</span>
@@ -478,7 +478,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                     <span className="text-slate-400 text-[11px]">Met</span>
                   </div>
 
-                  <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center justify-between p-2.5 rounded-lg border border-border/70 bg-muted/60">
                     <div className="flex items-center gap-2 text-slate-800">
                       {selectedStudent.academic.projects.length > 0 ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -492,7 +492,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center justify-between p-2.5 rounded-lg border border-border/70 bg-muted/60">
                     <div className="flex items-center gap-2 text-slate-800">
                       {selectedStudent.eligibilityStatus === 'ELIGIBLE' || selectedStudent.eligibilityStatus === 'ADMIN_OVERRIDE' ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -510,14 +510,14 @@ export const StudentsList: React.FC<StudentsListProps> = ({
 
               {/* 3. Project Submissions */}
               <div>
-                <h4 className="font-semibold text-slate-900 uppercase tracking-wider text-[11px] mb-3 text-slate-400">
+                <h4 className="font-semibold text-foreground uppercase tracking-wider text-[11px] mb-3 text-slate-400">
                   Projects
                 </h4>
                 <div className="space-y-2">
                   {selectedStudent.academic.projects.map(proj => (
-                    <div key={proj.id} className="p-3 rounded-lg border border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <div key={proj.id} className="p-3 rounded-lg border border-border/70 bg-muted/60 flex items-center justify-between">
                       <div>
-                        <div className="font-medium text-slate-900">{proj.title}</div>
+                        <div className="font-medium text-foreground">{proj.title}</div>
                         <div className="text-[11px] text-slate-500 mt-0.5">{proj.description}</div>
                       </div>
                       <div className="text-right shrink-0 ml-3">
@@ -541,7 +541,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
               )}
 
               {/* Admin Direct Action for Testing Phase */}
-              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-xs space-y-2">
+              <div className="p-3 rounded-xl border border-border bg-muted text-xs space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-800">Admin Eligibility Review:</span>
                   <span className="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded font-medium">Testing Phase Workflow</span>
@@ -554,7 +554,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                       setSelectedStudent(prev => prev ? { ...prev, eligibilityStatus: 'ELIGIBLE' as any } : null);
                       if (onRefreshData) onRefreshData();
                     }}
-                    className="flex-1 py-1.5 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors"
+                    className="flex-1 py-1.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
                   >
                     Approve Placement Eligibility
                   </button>
@@ -575,13 +575,13 @@ export const StudentsList: React.FC<StudentsListProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 px-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs">
+            <div className="p-4 px-5 border-t border-border/70 bg-muted/60 flex items-center justify-between text-xs">
               <span className="text-slate-400">
                 Evaluation Authority: <strong className="text-slate-700">Main Admin</strong>
               </span>
               <button
                 onClick={() => setSelectedStudent(null)}
-                className="px-4 py-1.5 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 transition-colors"
+                className="px-4 py-1.5 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
               >
                 Close Record
               </button>

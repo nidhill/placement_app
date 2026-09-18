@@ -1,21 +1,19 @@
 import React, { useState } from 'react';
 import { User, UserRole } from '../../types.ts';
+import { api } from '../../lib/api.ts';
 import { 
   Shield, 
   Briefcase, 
   BarChart3, 
-  GraduationCap, 
+  GraduationCap,
   ArrowRight, 
   ArrowLeft, 
   Lock, 
   Mail, 
-  KeyRound,
-  CheckCircle2,
-  Building2
+  KeyRound
 } from 'lucide-react';
 
 interface LoginPageProps {
-  users: User[];
   onLoginSuccess: (user: User) => void;
 }
 
@@ -30,23 +28,25 @@ interface RoleConfig {
 }
 
 const ROLE_CONFIGS: RoleConfig[] = [
+  // Two separate staff roles: the SHO App admin governs the tool (users,
+  // overrides, settings); the Placement Team runs it day to day.
   {
     role: 'MAIN_ADMIN',
-    title: 'Main Admin',
-    subtitle: 'System Administration',
-    description: 'Central governance, user accounts, system configuration, compliance logs & eligibility overrides.',
+    title: 'Admin',
+    subtitle: 'Administration',
+    description: 'SHO App admin account. Manage placement team users, settings, compliance logs & eligibility overrides.',
     icon: Shield,
-    defaultEmail: 'admin@haca.edu',
-    sampleName: 'Executive Administrator'
+    defaultEmail: '',
+    sampleName: ''
   },
   {
     role: 'PLACEMENT_OFFICER',
-    title: 'Placement Officer',
+    title: 'Placement Team',
     subtitle: 'Placement Operations',
-    description: 'Recruiter partnerships, corporate job drives, candidate matching, interview schedules & offer tracking.',
+    description: 'Jobs, applications, interview scheduling, feedback and student syncs. Sign in with your SHO App Placement Team account.',
     icon: Briefcase,
-    defaultEmail: 'placement.asad@haca.edu',
-    sampleName: 'Asad Rizvi'
+    defaultEmail: '',
+    sampleName: ''
   },
   {
     role: 'MANAGEMENT',
@@ -54,24 +54,24 @@ const ROLE_CONFIGS: RoleConfig[] = [
     subtitle: 'Analytics & Reports',
     description: 'Executive placement intelligence, school/program benchmarks, cohort conversion & recruiter metrics.',
     icon: BarChart3,
-    defaultEmail: 'director.vance@haca.edu',
-    sampleName: 'Dr. Kamran Vance'
+    defaultEmail: '',
+    sampleName: ''
   },
   {
     role: 'STUDENT',
     title: 'Student',
     subtitle: 'Career & Opportunities',
-    description: 'Personal placement portal, verified profile & CV, technical skills, job applications & interviews.',
+    description: 'Sign in with your LMS account. Your profile, CV, job applications & interviews — available once your mentor has marked you placement-eligible.',
     icon: GraduationCap,
-    defaultEmail: 'ali.raza@student.haca.edu',
-    sampleName: 'Ali Raza'
+    defaultEmail: '',
+    sampleName: ''
   }
 ];
 
-export const LoginPage: React.FC<LoginPageProps> = ({ users, onLoginSuccess }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('••••••••••••');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -79,8 +79,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ users, onLoginSuccess }) =
 
   const handleSelectRole = (roleConfig: RoleConfig) => {
     setSelectedRole(roleConfig.role);
-    setEmail(roleConfig.defaultEmail);
-    setPassword('••••••••••••');
+    setEmail('');
+    setPassword('');
     setError(null);
   };
 
@@ -89,276 +89,183 @@ export const LoginPage: React.FC<LoginPageProps> = ({ users, onLoginSuccess }) =
     setError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Staff (admin / placement team / management) sign in with their
+  // SHO App account; students with their LMS account. The server then tells
+  // us who we are in placement terms — a student who isn't approved yet gets
+  // a clear message instead of an empty portal.
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRole) return;
-
+    if (!email.trim() || !password) { setError('Enter your email and password.'); return; }
     setLoading(true);
     setError(null);
-
-    setTimeout(() => {
-      // Find matching user from seed users or create mock user
-      let matchedUser = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
-      
-      if (!matchedUser) {
-        // Fall back to first user of that role
-        matchedUser = users.find(u => u.role === selectedRole);
+    try {
+      if (selectedRole === 'STUDENT') await api.loginStudent(email.trim(), password);
+      else await api.loginStaff(email.trim(), password);
+      const me = await api.me();
+      if (me.user.role !== selectedRole) {
+        api.logout();
+        setError(`This account is ${me.user.role.replace('_', ' ').toLowerCase()} — choose that role to sign in.`);
+        return;
       }
-
-      if (matchedUser) {
-        setLoading(false);
-        onLoginSuccess(matchedUser);
-      } else {
-        // Construct fallback user for that role
-        const fallbackUser: User = {
-          id: selectedRole === 'STUDENT' ? 'student-tech-1' : `user-${selectedRole.toLowerCase()}-demo`,
-          email: email.trim() || activeConfig?.defaultEmail || 'user@haca.edu',
-          fullName: activeConfig?.sampleName || 'HACA User',
-          role: selectedRole,
-          department: selectedRole === 'STUDENT' ? 'School of Tech' : 'Central Administration',
-          isActive: true,
-          createdAt: new Date().toISOString()
-        };
-        setLoading(false);
-        onLoginSuccess(fallbackUser);
-      }
-    }, 250);
+      onLoginSuccess(me.user);
+    } catch (err: any) {
+      api.logout();
+      setError(err?.message || 'Sign-in failed. Check your email and password.');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Same split layout as the LMS login: blue brand panel on the left, white
+  // form on the right. Step 1 picks the role, step 2 signs in with the SHO
+  // App (staff) or LMS (student) account.
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between selection:bg-slate-900 selection:text-white">
-      
-      {/* Top Academic Brand Bar */}
-      <header className="py-6 px-6 sm:px-10 border-b border-slate-200/80 bg-white">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-xs">
-              <GraduationCap className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-bold tracking-tight text-slate-900">HACA</span>
-                <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold border border-slate-200/60">
-                  Institutional Placement
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 font-medium">Higher Academic Career & Advancement</p>
-            </div>
-          </div>
+    <div className="min-h-screen flex flex-col lg:flex-row bg-white text-foreground">
 
-          <div className="hidden sm:flex items-center gap-3 text-xs text-slate-500">
-            <div className="flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-slate-400" />
-              <span>Campus Portal · Cycle 2026</span>
-            </div>
-          </div>
+      {/* BRAND PANEL */}
+      <div
+        className="hidden lg:flex relative flex-col overflow-hidden text-white px-[46px] py-11"
+        style={{ flex: '1 1 44%', background: 'linear-gradient(158deg,#1e50ff 0%,#1637c9 52%,#0f1f6b 100%)' }}
+      >
+        <div className="pointer-events-none absolute -top-[120px] -right-[120px] w-[340px] h-[340px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(255,255,255,.20), transparent 70%)' }} />
+        <div className="pointer-events-none absolute -bottom-[160px] -left-[100px] w-[360px] h-[360px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(90,124,255,.5), transparent 70%)' }} />
+
+        <div className="relative flex items-center gap-3">
+          <img src="/haca-logo.png" alt="HACA" className="h-[52px] w-auto block brightness-0 invert" />
+          <span className="text-[11px] font-extrabold tracking-[0.25em] text-white/70">PLACEMENT</span>
         </div>
-      </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-8">
-        <div className="w-full max-w-5xl mx-auto">
-          
-          {/* STEP 1: ROLE SELECTION VIEW */}
+        <div className="relative flex-1 flex flex-col justify-center items-center text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold mb-[22px]" style={{ background: 'rgba(255,255,255,.14)', letterSpacing: '.4px' }}>
+            <span className="w-[7px] h-[7px] rounded-full inline-block" style={{ background: '#7dff9f' }} />
+            Placement Cycle 2026
+          </div>
+          <h1 className="font-extrabold text-[48px] leading-[1.08] tracking-tight">From classroom<br />to career.</h1>
+          <p className="mt-4 mx-auto text-[17px] leading-[1.6] max-w-[440px]" style={{ color: 'rgba(255,255,255,.82)' }}>
+            Jobs, applications and interviews for every placement-ready HACA student, in one place.
+          </p>
+        </div>
+
+        <div className="relative flex gap-[26px] flex-wrap justify-center">
+          {[['Jobs', 'curated & scraped'], ['Matching', 'skills-based'], ['Interviews', 'tracked end-to-end']].map(([n, l]) => (
+            <div key={n} className="text-center">
+              <div className="font-bold text-[22px]">{n}</div>
+              <div className="text-[13px] mt-0.5" style={{ color: 'rgba(255,255,255,.72)' }}>{l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* FORM PANEL */}
+      <div className="flex flex-col justify-center px-6 py-12 sm:px-[60px] sm:py-14" style={{ flex: '1 1 56%' }}>
+        <div className="w-full max-w-[560px] mx-auto">
+
+          <div className="flex lg:hidden flex-col items-center mb-8 gap-2">
+            <img src="/haca-logo.png" alt="HACA" className="h-12 w-auto object-contain" />
+            <span className="text-[10px] font-extrabold tracking-[0.25em] text-foreground/60">PLACEMENT</span>
+          </div>
+
+          {/* STEP 1: ROLE SELECTION */}
           {!selectedRole && (
-            <div className="space-y-8 animate-in fade-in duration-200">
-              
-              {/* Header Texts */}
-              <div className="text-center max-w-xl mx-auto space-y-2">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200/80 text-[11px] font-semibold text-slate-700">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  Role-Based Institutional Access
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-                  Welcome to HACA Placement Platform
-                </h1>
-                <p className="text-sm text-slate-500 font-normal">
-                  Choose how you want to continue to access your personalized workspace.
-                </p>
+            <div className="space-y-7 animate-fade-up">
+              <div>
+                <h2 className="font-extrabold text-[32px] tracking-tight">Welcome back</h2>
+                <p className="mt-2 text-[15px] text-muted-foreground">Choose how you want to sign in.</p>
               </div>
 
-              {/* Four Clean Role Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {ROLE_CONFIGS.map((rc) => {
                   const Icon = rc.icon;
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={rc.role}
                       id={`role-card-${rc.role.toLowerCase()}`}
                       onClick={() => handleSelectRole(rc)}
-                      className="group bg-white rounded-2xl p-6 border border-slate-200/90 hover:border-slate-400 hover:shadow-md transition-all duration-150 flex flex-col justify-between cursor-pointer text-left relative overflow-hidden"
+                      className="group text-left bg-card rounded-[22px] p-5 border border-border hover:border-primary/50 hover:shadow-[0_12px_30px_-14px_rgba(30,80,255,0.45)] transition-all duration-200 flex flex-col gap-4 cursor-pointer"
                     >
-                      {/* Top Role Indicator */}
-                      <div className="space-y-4">
-                        <div className="w-12 h-12 rounded-xl bg-slate-100 group-hover:bg-slate-900 group-hover:text-white text-slate-800 flex items-center justify-center transition-colors duration-150">
-                          <Icon className="w-6 h-6" />
-                        </div>
-                        
-                        <div>
-                          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-                            {rc.subtitle}
-                          </div>
-                          <h2 className="text-lg font-bold text-slate-900 group-hover:text-slate-950">
-                            {rc.title}
-                          </h2>
-                          <p className="text-xs text-slate-500 mt-2 line-clamp-3 leading-relaxed">
-                            {rc.description}
-                          </p>
-                        </div>
+                      <div className="w-11 h-11 rounded-full bg-secondary text-primary group-hover:bg-primary group-hover:text-white flex items-center justify-center transition-colors duration-200">
+                        <Icon className="w-5 h-5" />
                       </div>
-
-                      {/* Bottom Action */}
-                      <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-700 group-hover:text-slate-900">
-                        <span>Continue</span>
-                        <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{rc.subtitle}</div>
+                        <h3 className="text-base font-bold">{rc.title}</h3>
+                        <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed line-clamp-3">{rc.description}</p>
                       </div>
-                    </div>
+                      <div className="mt-auto flex items-center gap-1.5 text-xs font-semibold text-primary">
+                        Continue <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                      </div>
+                    </button>
                   );
                 })}
               </div>
 
-              {/* Footer Note */}
-              <div className="text-center text-xs text-slate-400 pt-4">
-                Authorized institutional access only · Multi-role placement intelligence & student progression
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Staff sign in with their SHO App account, students with their LMS account.
+              </p>
             </div>
           )}
 
-          {/* STEP 2: ROLE SPECIFIC LOGIN FORM */}
+          {/* STEP 2: SIGN IN */}
           {selectedRole && activeConfig && (
-            <div className="max-w-md mx-auto animate-in fade-in zoom-in-95 duration-150">
-              
-              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-7 sm:p-8 space-y-6">
-                
-                {/* Back Button & Role Badge */}
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={handleBackToRoles}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back to role selection</span>
-                  </button>
+            <div className="max-w-[440px] animate-fade-up">
+              <button
+                type="button"
+                onClick={handleBackToRoles}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to role selection
+              </button>
 
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                    {activeConfig.subtitle}
-                  </span>
+              <div className="mt-5 flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center shadow-[0_8px_18px_-8px_rgba(30,80,255,0.6)]">
+                  <activeConfig.icon className="w-5 h-5" />
                 </div>
-
-                {/* Role Header */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-2xs">
-                      <activeConfig.icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-900">
-                        {activeConfig.title} Login
-                      </h2>
-                      <p className="text-xs text-slate-500">
-                        Sign in to manage {activeConfig.subtitle.toLowerCase()}.
-                      </p>
-                    </div>
-                  </div>
+                <div>
+                  <h2 className="font-extrabold text-[28px] tracking-tight leading-tight">{activeConfig.title}</h2>
+                  <p className="text-sm text-muted-foreground">{selectedRole === 'STUDENT' ? 'Sign in with your LMS account' : 'Sign in with your SHO App account'}</p>
                 </div>
-
-                {/* Demo Credentials Reminder Banner */}
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-xs text-slate-600 space-y-1">
-                  <div className="flex items-center gap-1.5 font-semibold text-slate-800">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Demo Account Configured</span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 flex justify-between pt-0.5">
-                    <span>User: <strong className="text-slate-700">{activeConfig.sampleName}</strong></span>
-                    <span className="font-mono text-slate-600">{activeConfig.defaultEmail}</span>
-                  </div>
-                </div>
-
-                {/* Login Form */}
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {error && (
-                    <div className="p-3 text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg">
-                      {error}
-                    </div>
-                  )}
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Institutional Email</span>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder={activeConfig.defaultEmail}
-                      className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 font-medium text-slate-900 placeholder-slate-400 shadow-2xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
-                        <KeyRound className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Password</span>
-                      </label>
-                      <span className="text-[11px] text-slate-400">Demo active</span>
-                    </div>
-                    <input
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter password"
-                      className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 font-medium text-slate-900 placeholder-slate-400 shadow-2xs"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full mt-2 py-2.5 px-4 bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
-                  >
-                    {loading ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>Sign In as {activeConfig.title}</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-
-                {/* Instant Quick Login Shortcut */}
-                <div className="pt-2 text-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail(activeConfig.defaultEmail);
-                      handleSubmit({ preventDefault: () => {} } as any);
-                    }}
-                    className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 underline underline-offset-4 transition-colors"
-                  >
-                    Quick Demo One-Click Sign In →
-                  </button>
-                </div>
-
               </div>
 
+              <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-[18px]">
+                {error && (
+                  <div className="rounded-[13px] px-4 py-3 text-sm text-red-600" style={{ background: 'rgba(220,38,38,.06)', border: '1px solid rgba(220,38,38,.2)' }}>
+                    {error}
+                  </div>
+                )}
+
+                <label className="flex flex-col gap-[7px]">
+                  <span className="text-[13px] font-semibold flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-muted-foreground" /> Email</span>
+                  <input
+                    type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full px-[15px] py-[13px] rounded-[13px] text-[15px] bg-white border border-border outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-[7px]">
+                  <span className="text-[13px] font-semibold flex items-center gap-1.5"><KeyRound className="w-3.5 h-3.5 text-muted-foreground" /> Password</span>
+                  <input
+                    type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                    className="w-full px-[15px] py-[13px] rounded-[13px] text-[15px] bg-white border border-border outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  />
+                </label>
+
+                <button
+                  type="submit" disabled={loading}
+                  className="mt-0.5 w-full py-[14px] rounded-[13px] bg-primary hover:bg-primary/90 text-white font-semibold text-[15px] transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-[0_10px_24px_-10px_rgba(30,80,255,0.7)]"
+                >
+                  {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Lock className="w-4 h-4" /> Sign in</>}
+                </button>
+              </form>
             </div>
           )}
 
+          <p className="mt-10 text-center lg:text-left text-xs text-muted-foreground">HACA Placement · 2026</p>
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="py-4 px-6 text-center text-xs text-slate-400 border-t border-slate-200/60 bg-white">
-        HACA Institutional Placement Platform · Version 2026.1 · All rights reserved
-      </footer>
-
+      </div>
     </div>
   );
 };

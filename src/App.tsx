@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from './types.ts';
-import { api } from './lib/api.ts';
+import { api, getToken, setToken } from './lib/api.ts';
 import { Sidebar, NavItemId } from './components/common/Sidebar.tsx';
 import { Header } from './components/common/Header.tsx';
-import { PersonaModal } from './components/common/PersonaModal.tsx';
 import { LoginPage } from './components/auth/LoginPage.tsx';
 
 // Modern 4-Role Dashboards
@@ -24,58 +23,47 @@ import { AuditLogsView } from './components/admin/AuditLogsView.tsx';
 import { EmergencyOverrideView } from './components/admin/EmergencyOverrideView.tsx';
 import { StudentPortalView } from './components/student/StudentPortalView.tsx';
 
-import { RotateCcw } from 'lucide-react';
 
 export default function App() {
-  const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   
-  // Requirement 1: DEFAULT STATE: The sidebar should be COLLAPSED.
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  // Rail (collapsed) is the default, like the LMS; the choice sticks per browser.
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => localStorage.getItem('placement_sidebar_collapsed') !== 'false');
+  const toggleSidebar = () => setIsSidebarCollapsed(prev => { localStorage.setItem('placement_sidebar_collapsed', String(!prev)); return !prev; });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
   const [activeNav, setActiveNav] = useState<NavItemId>('dashboard');
-  const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [resetMessage, setResetMessage] = useState<string | null>(null);
-  const [isResetting, setIsResetting] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // Load system seed users
-  const loadInitialUsers = async () => {
+  // Session comes from the stored JWT (issued by the SHO App or the LMS).
+  const loadSession = async () => {
+    if (!getToken()) { setInitialLoading(false); return; }
     try {
-      const res = await api.getUsers();
-      setUsers(res.users);
-
-      // Check if there was a saved session
-      const savedUserId = sessionStorage.getItem('haca_active_user_id');
-      if (savedUserId) {
-        const found = res.users.find(u => u.id === savedUserId);
-        if (found) {
-          setCurrentUser(found);
-          api.setActiveUser(found);
-          setIsLoggedIn(true);
-          setActiveNav(found.role === 'STUDENT' ? 'student_dashboard' : 'dashboard');
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load system users:', err);
+      const res = await api.me();
+      setCurrentUser(res.user);
+      setIsLoggedIn(true);
+      // Only the first load picks the landing view; a data refresh after an
+      // action (apply, confirm…) must keep the user where they are.
+      setActiveNav(prev => (isLoggedIn ? prev : res.user.role === 'STUDENT' ? 'student_dashboard' : 'dashboard'));
+    } catch (err: any) {
+      // Expired token, or a student not yet approved — back to login.
+      if (err?.status === 401 || err?.status === 403) setToken(null);
+      console.error('Session check failed:', err?.message);
     } finally {
       setInitialLoading(false);
     }
   };
 
   useEffect(() => {
-    loadInitialUsers();
+    loadSession();
   }, [refreshTrigger]);
 
   // Login handler
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
-    api.setActiveUser(user);
     setIsLoggedIn(true);
-    sessionStorage.setItem('haca_active_user_id', user.id);
 
     // Set initial view according to role
     if (user.role === 'STUDENT') {
@@ -87,71 +75,18 @@ export default function App() {
 
   // Sign out handler (returns to login / role selection page)
   const handleSignOut = () => {
+    api.logout();
+    setCurrentUser(null);
     setIsLoggedIn(false);
-    sessionStorage.removeItem('haca_active_user_id');
   };
 
-  // Switch role via demo switcher modal
-  const handleSelectUser = (user: User) => {
-    setCurrentUser(user);
-    api.setActiveUser(user);
-    sessionStorage.setItem('haca_active_user_id', user.id);
-    setIsPersonaModalOpen(false);
-
-    // Auto navigate to role context
-    switch (user.role) {
-      case 'STUDENT':
-        setActiveNav('student_dashboard');
-        break;
-      case 'PLACEMENT_OFFICER':
-      case 'MANAGEMENT':
-      case 'MAIN_ADMIN':
-      default:
-        setActiveNav('dashboard');
-        break;
-    }
-  };
-
-  const handleResetSystem = async () => {
-    if (isResetting) return;
-    setIsResetting(true);
-    setResetMessage('Resetting system data to clean seed state...');
-    try {
-      const res = await api.resetSystem();
-      
-      // Reload users to ensure fresh user state
-      const usersRes = await api.getUsers();
-      setUsers(usersRes.users);
-
-      const savedUserId = sessionStorage.getItem('haca_active_user_id');
-      if (savedUserId) {
-        const found = usersRes.users.find(u => u.id === savedUserId);
-        if (found) {
-          setCurrentUser(found);
-          api.setActiveUser(found);
-        }
-      }
-
-      // Remount and refresh all dashboard views
-      setRefreshTrigger(prev => prev + 1);
-      setResetMessage(res.message || 'System state reset to clean seed state.');
-      setTimeout(() => setResetMessage(null), 3500);
-    } catch (err: any) {
-      console.error('Reset error:', err);
-      setResetMessage(`Reset failed: ${err.message || 'Unknown error'}`);
-      setTimeout(() => setResetMessage(null), 4000);
-    } finally {
-      setIsResetting(false);
-    }
-  };
-
-  // Initial spinner while fetching seed users
+  // Initial spinner while checking the session
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-3 border-slate-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-xs font-medium text-slate-600">Initializing HACA Placement Platform...</p>
+          <div className="w-8 h-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-xs font-medium text-muted-foreground">Checking your session…</p>
         </div>
       </div>
     );
@@ -160,10 +95,7 @@ export default function App() {
   // Requirement 4: Separate Login / Role Selection Page before entering application
   if (!isLoggedIn || !currentUser) {
     return (
-      <LoginPage 
-        users={users} 
-        onLoginSuccess={handleLoginSuccess} 
-      />
+      <LoginPage onLoginSuccess={handleLoginSuccess} />
     );
   }
 
@@ -171,8 +103,8 @@ export default function App() {
   const getHeaderTitles = (): { title: string; subtitle?: string } => {
     switch (activeNav) {
       case 'dashboard':
-        if (currentUser.role === 'MAIN_ADMIN') return { title: 'Admin Overview', subtitle: 'HACA Institutional Operations & Control' };
-        if (currentUser.role === 'PLACEMENT_OFFICER') return { title: 'Placement Operations', subtitle: 'Student Pipelines & Matching' };
+        if (currentUser.role === 'MAIN_ADMIN') return { title: 'Admin Overview', subtitle: 'Users, integrations and placement health at a glance' };
+        if (currentUser.role === 'PLACEMENT_OFFICER') return { title: 'Placement Operations', subtitle: 'Your pipelines, matches and follow-ups for today' };
         if (currentUser.role === 'MANAGEMENT') return { title: 'Executive Overview', subtitle: 'Institutional Conversion & Health Benchmarks' };
         return { title: 'Overview', subtitle: 'HACA Institutional Placement Dashboard' };
       case 'candidate_matching':
@@ -230,7 +162,7 @@ export default function App() {
   const { title, subtitle } = getHeaderTitles();
 
   return (
-    <div className="h-screen w-screen bg-slate-50 text-slate-900 flex font-sans antialiased overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
       
       {/* 1. Left Sidebar Navigation - Flex item that never covers the dashboard */}
       <Sidebar
@@ -238,8 +170,7 @@ export default function App() {
         onSelectNav={setActiveNav}
         currentUser={currentUser}
         isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
-        onOpenPersonaModal={() => setIsPersonaModalOpen(true)}
+        onToggleCollapse={toggleSidebar}
         onSignOut={handleSignOut}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
@@ -255,25 +186,18 @@ export default function App() {
           pageSubtitle={subtitle}
           currentUser={currentUser}
           isSidebarCollapsed={isSidebarCollapsed}
-          onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
+          onToggleSidebar={toggleSidebar}
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
-          onOpenPersonaModal={() => setIsPersonaModalOpen(true)}
-          onResetSystem={handleResetSystem}
-          isResetting={isResetting}
           onSignOut={handleSignOut}
         />
 
         {/* Global Toast if system reset */}
-        {resetMessage && (
-          <div className="bg-slate-900 text-white text-xs py-2.5 px-4 text-center font-medium shadow-xs flex items-center justify-center gap-2 shrink-0 border-b border-slate-800 animate-in fade-in slide-in-from-top duration-200">
-            <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin text-blue-400' : 'text-emerald-400'}`} />
-            <span>{resetMessage}</span>
-          </div>
-        )}
 
         {/* Main Dashboard / View Area - Natural scrolling and responsive container */}
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        <main className="relative flex-1 overflow-y-auto overflow-x-hidden px-5 pt-3 pb-8 md:px-8 md:pt-4">
           {currentUser.role === 'STUDENT' ? (
+            // The portal reloads its own data and keeps modals (confirm /
+            // decline) open across a refresh, so it is never remounted.
             <StudentPortalView 
               currentStudentId={currentUser.id}
               activeTab={activeNav}
@@ -281,7 +205,9 @@ export default function App() {
               onRefreshData={() => setRefreshTrigger(prev => prev + 1)}
             />
           ) : (
-            <>
+            // Staff views still remount on refresh (the old app's way of
+            // re-fetching everything).
+            <React.Fragment key={refreshTrigger}>
               {/* Dashboard Routing by Role */}
               {activeNav === 'dashboard' && (
                 <>
@@ -307,7 +233,7 @@ export default function App() {
                 </>
               )}
 
-              {/* Placement Officer Specific Views */}
+              {/* Placement Team Specific Views */}
               {activeNav === 'candidate_matching' && (
                 <CandidateMatchingView onRefreshData={() => setRefreshTrigger(prev => prev + 1)} />
               )}
@@ -346,7 +272,7 @@ export default function App() {
 
               {/* Main Admin Only Views */}
               {activeNav === 'users' && (
-                <AdminUsersView onRefreshData={() => setRefreshTrigger(prev => prev + 1)} />
+                <AdminUsersView currentUserId={currentUser.id} onRefreshData={() => setRefreshTrigger(prev => prev + 1)} />
               )}
 
               {activeNav === 'integrations' && (
@@ -360,20 +286,12 @@ export default function App() {
               {activeNav === 'settings' && (
                 <EmergencyOverrideView onRefreshData={() => setRefreshTrigger(prev => prev + 1)} />
               )}
-            </>
+            </React.Fragment>
           )}
         </main>
 
       </div>
 
-      {/* 4-Role Persona Switching Modal for testing */}
-      <PersonaModal
-        isOpen={isPersonaModalOpen}
-        onClose={() => setIsPersonaModalOpen(false)}
-        currentUser={currentUser}
-        users={users}
-        onSelectUser={handleSelectUser}
-      />
 
     </div>
   );

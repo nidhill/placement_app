@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ManagementKPIs } from '../../types.ts';
+import { ManagementKPIs, JobApplication } from '../../types.ts';
 import { api } from '../../lib/api.ts';
 import { HealthStatusBadge } from '../common/StatusBadge.tsx';
 import { 
@@ -28,11 +28,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
   const [selectedProgram, setSelectedProgram] = useState('ALL');
   const [selectedBatch, setSelectedBatch] = useState('ALL');
 
+  const [applications, setApplications] = useState<JobApplication[]>([]);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await api.getAnalytics();
+      const [data, apps] = await Promise.all([api.getAnalytics(), api.getApplications()]);
       setKpis(data);
+      setApplications(apps.applications || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -52,15 +55,20 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
     );
   }
 
-  // Monthly trend for institutional reports
-  const trendData = [
-    { month: 'January', rate: 28, placed: 42 },
-    { month: 'February', rate: 38, placed: 78 },
-    { month: 'March', rate: 46, placed: 120 },
-    { month: 'April', rate: 54, placed: 174 },
-    { month: 'May', rate: 62, placed: 236 },
-    { month: 'June', rate: kpis.overallPlacementRate, placed: kpis.totalPlaced },
-  ];
+  // Monthly trend: cumulative placements over the last six months, from the
+  // applications loaded above — not a fixed demo series.
+  const trendData = (() => {
+    const now = new Date();
+    const out: { month: string; rate: number; placed: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      const placed = applications.filter(a => (a.status === 'JOINED' || a.status === 'SELECTED') && new Date(a.updatedAt) < end).length;
+      out.push({ month: d.toLocaleString('en-IN', { month: 'long' }), rate: kpis.totalEligible > 0 ? Math.round((placed / kpis.totalEligible) * 100) : 0, placed });
+    }
+    return out;
+  })();
+
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -68,7 +76,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
       {/* Header & Top Filters */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Placement Analytics & Reports</h2>
+          <h2 className="text-xl font-semibold text-foreground tracking-tight">Placement Analytics & Reports</h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Executive institutional intelligence across schools, programs, cohorts, and acquisition channels
           </p>
@@ -80,7 +88,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
             <select
               value={academicYear}
               onChange={e => setAcademicYear(e.target.value)}
-              className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+              className="appearance-none bg-white border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
             >
               <option value="2026">Academic Year: 2026</option>
               <option value="2025">Academic Year: 2025</option>
@@ -92,7 +100,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
             <select
               value={selectedSchool}
               onChange={e => setSelectedSchool(e.target.value)}
-              className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+              className="appearance-none bg-white border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
             >
               <option value="ALL">All Schools</option>
               <option value="tech">School of Tech</option>
@@ -106,7 +114,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
             <select
               value={selectedBatch}
               onChange={e => setSelectedBatch(e.target.value)}
-              className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+              className="appearance-none bg-white border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
             >
               <option value="ALL">All Batches</option>
               <option value="2026-Q1">Batch 2026-Q1</option>
@@ -119,42 +127,42 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
 
       {/* 4 Core Conversion Rates */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <span className="text-xs text-slate-500 font-medium block">Placement Rate</span>
-          <div className="text-2xl font-bold text-slate-900 mt-1">{kpis.overallPlacementRate}%</div>
+          <div className="text-2xl font-bold text-foreground mt-1">{kpis.overallPlacementRate}%</div>
           <div className="mt-1">
             <HealthStatusBadge status={kpis.healthStatus} />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <span className="text-xs text-slate-500 font-medium block">Offer Rate</span>
-          <div className="text-2xl font-bold text-slate-900 mt-1">
+          <div className="text-2xl font-bold text-foreground mt-1">
             {Math.round(((kpis.totalOffers || 31) / (kpis.totalEligible || 312)) * 100)}%
           </div>
           <span className="text-[11px] text-slate-400 mt-1 block">{kpis.totalOffers} Total Offers</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <span className="text-xs text-slate-500 font-medium block">Interview Rate</span>
-          <div className="text-2xl font-bold text-slate-900 mt-1">
+          <div className="text-2xl font-bold text-foreground mt-1">
             {Math.round(((kpis.totalInterviews || 84) / (kpis.totalEligible || 312)) * 100)}%
           </div>
           <span className="text-[11px] text-slate-400 mt-1 block">{kpis.totalInterviews} Rounds</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <span className="text-xs text-slate-500 font-medium block">Eligible Student Pool</span>
-          <div className="text-2xl font-bold text-slate-900 mt-1">{kpis.totalEligible}</div>
+          <div className="text-2xl font-bold text-foreground mt-1">{kpis.totalEligible}</div>
           <span className="text-[11px] text-slate-400 mt-1 block">Out of {kpis.totalStudents} total</span>
         </div>
       </div>
 
       {/* Placement Trend & Monthly Progress */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs">
+      <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Placement Progress Trend</h3>
+            <h3 className="text-sm font-semibold text-foreground">Placement Progress Trend</h3>
             <p className="text-xs text-slate-400 mt-0.5">Month-by-month trajectory toward annual institutional goals</p>
           </div>
           <div className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
@@ -169,10 +177,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
               <div className="text-[11px] font-medium text-slate-600 mb-1 opacity-80 group-hover:opacity-100">
                 {td.rate}%
               </div>
-              <div className="w-full max-w-[40px] bg-slate-100 rounded-t-md relative flex items-end h-full">
+              <div className="w-full max-w-[40px] bg-muted rounded-t-md relative flex items-end h-full">
                 <div 
                   className={`w-full rounded-t-md transition-all duration-300 ${
-                    idx === trendData.length - 1 ? 'bg-slate-900' : 'bg-slate-300 group-hover:bg-slate-400'
+                    idx === trendData.length - 1 ? 'bg-primary' : 'bg-slate-300 group-hover:bg-slate-400'
                   }`}
                   style={{ height: `${(td.rate / 100) * 100}%` }}
                 />
@@ -189,8 +197,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* School Comparison */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs">
-          <h3 className="text-sm font-semibold text-slate-900 mb-3">Placement by School</h3>
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Placement by School</h3>
           <div className="space-y-4">
             {kpis.schoolMetrics.map(sm => (
               <div key={sm.school} className="space-y-1.5">
@@ -198,10 +206,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
                   <span className="font-medium text-slate-800">{sm.school}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-slate-500 text-[11px]">{sm.placed} / {sm.totalEligible} placed</span>
-                    <span className="font-bold text-slate-900">{sm.rate}%</span>
+                    <span className="font-bold text-foreground">{sm.rate}%</span>
                   </div>
                 </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full ${sm.healthStatus === 'GREEN' ? 'bg-emerald-500' : sm.healthStatus === 'YELLOW' ? 'bg-amber-500' : 'bg-rose-500'}`}
                     style={{ width: `${Math.min(sm.rate, 100)}%` }}
@@ -213,8 +221,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
         </div>
 
         {/* Batch Health Comparison */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs">
-          <h3 className="text-sm font-semibold text-slate-900 mb-3">Batch Health Status</h3>
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Batch Health Status</h3>
           <div className="space-y-4">
             {kpis.batchMetrics.map(bm => (
               <div key={bm.batch} className="space-y-1.5">
@@ -225,7 +233,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
                   </div>
                   <HealthStatusBadge status={bm.healthStatus} rate={bm.rate} />
                 </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full ${bm.healthStatus === 'GREEN' ? 'bg-emerald-500' : bm.healthStatus === 'YELLOW' ? 'bg-amber-500' : 'bg-rose-500'}`}
                     style={{ width: `${Math.min(bm.rate, 100)}%` }}
@@ -239,9 +247,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
       </div>
 
       {/* Sourcing Channel Performance & Conversion ROI */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs">
+      <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
         <div className="mb-4">
-          <h3 className="text-sm font-semibold text-slate-900">Job Source Channel Conversion ROI</h3>
+          <h3 className="text-sm font-semibold text-foreground">Job Source Channel Conversion ROI</h3>
           <p className="text-xs text-slate-400 mt-0.5">
             Efficacy metrics comparing AI Job Scraper (Apify), Staff Referrals, and Direct Placement Outreach
           </p>
@@ -249,9 +257,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {kpis.channelMetrics.map(cm => (
-            <div key={cm.channel} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2.5">
+            <div key={cm.channel} className="p-4 rounded-xl border border-border bg-muted/60 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900">{cm.label}</span>
+                <span className="text-xs font-bold text-foreground">{cm.label}</span>
                 {cm.isLowPerforming && (
                   <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 font-bold flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3 text-rose-600" /> Low Conversion
@@ -260,11 +268,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = () => {
               </div>
 
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-extrabold text-slate-900">{cm.conversionRate}%</span>
+                <span className="text-2xl font-extrabold text-foreground">{cm.conversionRate}%</span>
                 <span className="text-[11px] text-slate-500">Placement Conversion</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-200/60 text-slate-600">
+              <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-border text-slate-600">
                 <div>
                   <span className="text-slate-400 block">Sourced:</span>
                   <span className="font-semibold text-slate-800">{cm.jobsDiscovered}</span>

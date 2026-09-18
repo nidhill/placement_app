@@ -39,14 +39,14 @@ export const EligibilityBadge: React.FC<{ status: EligibilityStatus } & BadgePro
       );
     case 'ADMIN_OVERRIDE':
       return (
-        <span id={id} className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200/60 whitespace-nowrap ${className}`}>
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+        <span id={id} className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200/60 whitespace-nowrap ${className}`}>
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
           Admin Override
         </span>
       );
     default:
       return (
-        <span id={id} className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200/60 whitespace-nowrap ${className}`}>
+        <span id={id} className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-muted text-slate-600 border border-border whitespace-nowrap ${className}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
           Not Evaluated
         </span>
@@ -76,7 +76,7 @@ export const SourceChannelBadge: React.FC<{ channel: JobSourceChannel } & BadgeP
       );
     case 'PLACEMENT_DIRECT':
       return (
-        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200/60 whitespace-nowrap ${className}`}>
+        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-slate-700 border border-border whitespace-nowrap ${className}`}>
           Placement Team Direct
         </span>
       );
@@ -88,7 +88,7 @@ export const SourceChannelBadge: React.FC<{ channel: JobSourceChannel } & BadgeP
       );
     case 'OUTREACH':
       return (
-        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200/60 whitespace-nowrap ${className}`}>
+        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200/60 whitespace-nowrap ${className}`}>
           Outreach
         </span>
       );
@@ -106,7 +106,7 @@ export const SourceChannelBadge: React.FC<{ channel: JobSourceChannel } & BadgeP
       );
     default:
       return (
-        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200/60 whitespace-nowrap ${className}`}>
+        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-slate-700 border border-border whitespace-nowrap ${className}`}>
           {String(channel).replace('_', ' ')}
         </span>
       );
@@ -138,8 +138,8 @@ export const ApplicationStatusBadge: React.FC<{ status: ApplicationStatus } & Ba
       );
     case 'SHORTLISTED':
       return (
-        <span id={id} className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 whitespace-nowrap ${className}`}>
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+        <span id={id} className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 whitespace-nowrap ${className}`}>
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
           Shortlisted
         </span>
       );
@@ -174,8 +174,8 @@ export const ApplicationStatusBadge: React.FC<{ status: ApplicationStatus } & Ba
       );
     case 'REJECTED':
       return (
-        <span id={id} className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 whitespace-nowrap ${className}`}>
-          <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+        <span id={id} className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-muted text-slate-700 whitespace-nowrap ${className}`}>
+          <span className="w-1.5 h-1.5 rounded-full bg-muted0"></span>
           Rejected
         </span>
       );
@@ -252,7 +252,7 @@ export const MatchVerdictBadge: React.FC<{ verdict: MatchVerdict; score: number 
       );
     case 'NOT_MATCHED':
       return (
-        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 whitespace-nowrap ${className}`}>
+        <span id={id} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-muted text-slate-600 whitespace-nowrap ${className}`}>
           {score}% Match
         </span>
       );
@@ -263,14 +263,14 @@ export const RoleBadge: React.FC<{ role: UserRole } & BadgeProps> = ({ role, cla
   switch (role) {
     case 'MAIN_ADMIN':
       return (
-        <span id={id} className={`px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-800 border border-slate-200 whitespace-nowrap ${className}`}>
+        <span id={id} className={`px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-slate-800 border border-border whitespace-nowrap ${className}`}>
           Administrator
         </span>
       );
     case 'PLACEMENT_OFFICER':
       return (
         <span id={id} className={`px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-100 whitespace-nowrap ${className}`}>
-          Placement Officer
+          Placement Team
         </span>
       );
     case 'MANAGEMENT':
@@ -281,7 +281,7 @@ export const RoleBadge: React.FC<{ role: UserRole } & BadgeProps> = ({ role, cla
       );
     case 'STUDENT':
       return (
-        <span id={id} className={`px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap ${className}`}>
+        <span id={id} className={`px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-slate-700 border border-border whitespace-nowrap ${className}`}>
           Candidate
         </span>
       );

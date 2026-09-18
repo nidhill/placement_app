@@ -175,9 +175,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
 
           <div>
             <span className="text-xs font-bold text-rose-700 uppercase tracking-wider">Access Gated (403 Forbidden)</span>
-            <h1 className="text-2xl font-bold text-slate-900 mt-1">Placement Portal Locked</h1>
+            <h1 className="text-2xl font-bold text-foreground mt-1">Placement Portal Locked</h1>
             <p className="text-sm text-slate-600 max-w-xl mx-auto mt-2">
-              Hello <strong className="text-slate-900">{profile.fullName}</strong>. Student accounts require Placement Eligibility approval by Main Admin before jobs can be viewed or applied for.
+              Hello <strong className="text-foreground">{profile.fullName}</strong>. Student accounts require Placement Eligibility approval by your mentor in the SHO App before jobs can be viewed or applied for.
             </p>
           </div>
 
@@ -185,25 +185,25 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
             <EligibilityBadge status={profile.eligibilityStatus} className="text-sm px-3.5 py-1.5" />
           </div>
 
-          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-left max-w-lg mx-auto space-y-2 text-xs">
-            <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+          <div className="bg-muted rounded-xl p-4 border border-border text-left max-w-lg mx-auto space-y-2 text-xs">
+            <div className="font-semibold text-foreground flex items-center gap-1.5">
               <AlertCircle className="w-4 h-4 text-amber-600" /> Administrative Eligibility Remarks:
             </div>
-            <p className="text-slate-700 italic bg-white p-2.5 rounded border border-slate-200">
+            <p className="text-slate-700 italic bg-white p-2.5 rounded border border-border">
               "{gateReason}"
             </p>
           </div>
         </div>
 
         {/* Academic Eligibility Audit Breakdown */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
-          <h3 className="font-bold text-slate-900 text-base">Your Academic Criteria Audit</h3>
+        <div className="bg-white rounded-2xl border border-border p-6 space-y-4">
+          <h3 className="font-bold text-foreground text-base">Your Academic Criteria Audit</h3>
           <p className="text-xs text-slate-500">
             Compare your current LMS indicators against the placement eligibility criteria:
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="p-3.5 rounded-xl bg-muted border border-border">
               <span className="text-slate-500 text-[11px] block">Attendance Rate</span>
               <span className={`text-xl font-bold mt-1 block ${profile.academic.attendancePercentage < 85 ? 'text-rose-600' : 'text-emerald-700'}`}>
                 {profile.academic.attendancePercentage}%
@@ -213,9 +213,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
               </span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="p-3.5 rounded-xl bg-muted border border-border">
               <span className="text-slate-500 text-[11px] block">Academic Grade</span>
-              <span className="text-xl font-bold text-slate-900 mt-1 block">
+              <span className="text-xl font-bold text-foreground mt-1 block">
                 {profile.academic.scores.gpaOrPercentage}%
               </span>
               <span className="text-[11px] text-slate-400">
@@ -223,9 +223,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
               </span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="p-3.5 rounded-xl bg-muted border border-border">
               <span className="text-slate-500 text-[11px] block">Capstone Projects</span>
-              <span className="text-xl font-bold text-slate-900 mt-1 block">
+              <span className="text-xl font-bold text-foreground mt-1 block">
                 {profile.academic.projects.length} Submitted
               </span>
               <span className="text-[11px] text-slate-400">
@@ -248,7 +248,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
     <div className="space-y-6">
       
       {/* Welcome Banner */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+      <div className="bg-white rounded-2xl p-6 border border-border shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -257,16 +257,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
               </span>
               <EligibilityBadge status={profile.eligibilityStatus} />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Welcome, {profile.fullName}</h1>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Welcome, {profile.fullName}</h1>
             <p className="text-slate-600 text-xs">
               {profile.school} • {profile.program} • Batch {profile.batch} ({profile.registrationNo})
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="px-3.5 py-2 bg-slate-50 rounded-xl border border-slate-200 text-center">
+            <div className="px-3.5 py-2 bg-muted rounded-xl border border-border text-center">
               <span className="text-[10px] text-slate-500 font-medium block uppercase">Active Applications</span>
-              <span className="text-lg font-bold text-slate-900">{applications.length}</span>
+              <span className="text-lg font-bold text-foreground">{applications.length}</span>
             </div>
             <div className="px-3.5 py-2 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
               <span className="text-[10px] text-emerald-700 font-medium block uppercase">Offers / Placed</span>
@@ -284,10 +284,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
         <div className="lg:col-span-2 space-y-6">
           
           {/* Rule-Based Recommended Jobs */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-border bg-muted flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                <h3 className="font-bold text-foreground text-sm flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-amber-500" /> Recommended Job Opportunities
                 </h3>
                 <p className="text-xs text-slate-500">
@@ -297,15 +297,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
               <span className="text-xs text-slate-400 font-medium">{recommendations.length} Matched Leads</span>
             </div>
 
-            <div className="divide-y divide-slate-200">
+            <div className="divide-y divide-border">
               {recommendations.map(rec => {
                 const isAlreadyApplied = applications.some(a => a.jobId === rec.job.id);
 
                 return (
-                  <div key={rec.job.id} className="p-4 hover:bg-slate-50 transition-colors space-y-2">
+                  <div key={rec.job.id} className="p-4 hover:bg-muted transition-colors space-y-2">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
-                        <span className="font-bold text-slate-900 text-sm">{rec.job.title}</span>
+                        <span className="font-bold text-foreground text-sm">{rec.job.title}</span>
                         <span className="text-xs text-slate-500 ml-1.5 font-medium">@ {rec.job.company}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -323,8 +323,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
                     </div>
 
                     {/* Match Explanation */}
-                    <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700">
-                      <span className="font-semibold text-slate-900 block mb-0.5">Match Analysis:</span>
+                    <div className="p-2.5 rounded-lg bg-muted border border-border text-xs text-slate-700">
+                      <span className="font-semibold text-foreground block mb-0.5">Match Analysis:</span>
                       {rec.explanation}
                     </div>
 
@@ -345,7 +345,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
                       <button
                         onClick={() => handleApply(rec.job.id)}
                         disabled={isAlreadyApplied}
-                        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${isAlreadyApplied ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-xs'}`}
+                        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${isAlreadyApplied ? 'bg-muted text-slate-400 cursor-not-allowed' : 'bg-primary hover:bg-primary/90 text-white shadow-sm'}`}
                       >
                         {isAlreadyApplied ? (
                           <>
@@ -365,15 +365,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
           </div>
 
           {/* Active Applications & Interview Schedule */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-border bg-muted flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">My Active Applications ({applications.length})</h3>
+                <h3 className="font-bold text-foreground text-sm">My Active Applications ({applications.length})</h3>
                 <p className="text-xs text-slate-500">Live recruitment progress and scheduled interviews</p>
               </div>
             </div>
 
-            <div className="divide-y divide-slate-200">
+            <div className="divide-y divide-border">
               {applications.length === 0 ? (
                 <div className="p-8 text-center text-xs text-slate-400">
                   You have not submitted any applications yet. Review your recommended jobs above to apply!
@@ -383,10 +383,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
                   const isRejected = app.status === 'REJECTED';
 
                   return (
-                    <div key={app.id} className="p-4 hover:bg-slate-50 transition-colors space-y-2">
+                    <div key={app.id} className="p-4 hover:bg-muted transition-colors space-y-2">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
-                          <span className="font-bold text-slate-900 text-sm">{app.jobTitle}</span>
+                          <span className="font-bold text-foreground text-sm">{app.jobTitle}</span>
                           <span className="text-xs text-slate-500 ml-1.5">@ {app.company}</span>
                         </div>
                         <ApplicationStatusBadge status={app.status} />
@@ -436,9 +436,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
         <div className="space-y-6">
           
           {/* Profile Links Editor */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-            <div className="border-b border-slate-100 pb-2">
-              <h3 className="font-bold text-slate-900 text-sm">Placement Profile Links</h3>
+          <div className="bg-white p-5 rounded-2xl border border-border shadow-sm space-y-4">
+            <div className="border-b border-border/70 pb-2">
+              <h3 className="font-bold text-foreground text-sm">Placement Profile Links</h3>
               <p className="text-xs text-slate-500 mt-0.5">Shared directly with recruiters when you apply</p>
             </div>
 
@@ -484,7 +484,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
 
               <button
                 type="submit"
-                className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition-colors"
+                className="w-full py-2 bg-primary hover:bg-primary/90 text-white font-semibold text-xs rounded-lg transition-colors"
               >
                 {linksSaved ? '✓ Profile Links Saved' : 'Update Portfolio Links'}
               </button>
@@ -492,9 +492,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
           </div>
 
           {/* Academic LMS Profile Card */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-            <div className="border-b border-slate-100 pb-2">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+          <div className="bg-white p-5 rounded-2xl border border-border shadow-sm space-y-4">
+            <div className="border-b border-border/70 pb-2">
+              <h3 className="font-bold text-foreground text-sm flex items-center gap-1.5">
                 <GraduationCap className="w-4 h-4 text-blue-600" /> Verified LMS Record
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">Synchronized from HACA LMS</p>
@@ -502,13 +502,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
 
             <div className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-2">
-                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                <div className="p-2.5 rounded-lg bg-muted border border-border/70">
                   <span className="text-[10px] text-slate-500 block">Attendance</span>
-                  <span className="font-bold text-sm text-slate-900">{profile.academic.attendancePercentage}%</span>
+                  <span className="font-bold text-sm text-foreground">{profile.academic.attendancePercentage}%</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                <div className="p-2.5 rounded-lg bg-muted border border-border/70">
                   <span className="text-[10px] text-slate-500 block">Grade / Score</span>
-                  <span className="font-bold text-sm text-slate-900">{profile.academic.scores.gpaOrPercentage}%</span>
+                  <span className="font-bold text-sm text-foreground">{profile.academic.scores.gpaOrPercentage}%</span>
                 </div>
               </div>
 
@@ -527,8 +527,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
                 <span className="text-[10px] text-slate-500 block font-semibold mb-1 uppercase">Verified Capstones</span>
                 <div className="space-y-1.5">
                   {profile.academic.projects.map(p => (
-                    <div key={p.id} className="p-2 rounded bg-slate-50 border border-slate-200">
-                      <div className="font-semibold text-slate-900 text-[11px]">{p.title}</div>
+                    <div key={p.id} className="p-2 rounded bg-muted border border-border">
+                      <div className="font-semibold text-foreground text-[11px]">{p.title}</div>
                       <div className="text-slate-500 text-[10px] line-clamp-1">{p.description}</div>
                     </div>
                   ))}
@@ -545,11 +545,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
       {/* MANDATORY REJECTION FEEDBACK MODAL */}
       {rejectionModalApp && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-border space-y-4">
+            <div className="flex items-center justify-between border-b border-border/70 pb-3">
               <div>
                 <span className="text-xs font-bold text-rose-700 uppercase">Mandatory Feedback Loop</span>
-                <h3 className="font-bold text-slate-900 text-base">Rejection Diagnostic Form</h3>
+                <h3 className="font-bold text-foreground text-base">Rejection Diagnostic Form</h3>
               </div>
               <button onClick={() => setRejectionModalApp(null)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>

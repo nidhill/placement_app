@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StudentProfile, JobListing, JobApplication, RejectionCategory, ApplicationStatus, ApplicationDeclineReason, HelpStatus } from '../../types.ts';
 import { api } from '../../lib/api.ts';
+import { plainText, applyLink } from '../../lib/text.ts';
 import { ApplicationStatusBadge, HelpStatusBadge } from '../common/StatusBadge.tsx';
 import { NavigationItem } from '../common/Sidebar.tsx';
 import { 
@@ -116,6 +117,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   const [selectedJobForModal, setSelectedJobForModal] = useState<JobListing | null>(null);
   const [applyingJobId, setApplyingJobId] = useState<string | null>(null);
   const [applySuccessMessage, setApplySuccessMessage] = useState<string | null>(null);
+  const [applyError, setApplyError] = useState<string | null>(null);
   const [withdrawingAppId, setWithdrawingAppId] = useState<string | null>(null);
   const [withdrawMessage, setWithdrawMessage] = useState<string | null>(null);
 
@@ -171,7 +173,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       const isEligible = dashData.profile.eligibilityStatus === 'ELIGIBLE' || dashData.profile.eligibilityStatus === 'ADMIN_OVERRIDE';
       setIsGated(!isEligible);
       if (!isEligible) {
-        setGatedReason('Placement portal access is currently pending Main Admin evaluation.');
+        setGatedReason('Your mentor has not marked you placement-eligible yet.');
       }
     } catch (err: any) {
       console.warn('Dashboard fetch error, falling back to direct profile:', err);
@@ -185,7 +187,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           const isEligible = studentRes.student.eligibilityStatus === 'ELIGIBLE' || studentRes.student.eligibilityStatus === 'ADMIN_OVERRIDE';
           setIsGated(!isEligible);
           if (!isEligible) {
-            setGatedReason('Placement portal access is currently pending Main Admin evaluation.');
+            setGatedReason('Your mentor has not marked you placement-eligible yet.');
           }
         }
       } catch (fallbackErr) {
@@ -202,13 +204,12 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
   const handleExternalApply = async (job: JobListing) => {
     if (!profile) return;
-    const targetUrl = job.applicationUrl || 
-                      job.externalUrl || 
-                      job.sourceUrl || 
-                      (job as any).url || 
-                      (job as any).link || 
-                      (job as any).jobUrl || 
-                      `https://www.google.com/search?q=${encodeURIComponent(job.company + ' ' + job.title + ' apply')}`;
+    const targetUrl = applyLink(job);
+    if (!targetUrl) {
+      setApplyError('This posting has no application link yet. Ask the placement team where to apply.');
+      return;
+    }
+    setApplyError(null);
 
     // 1. Immediately open the official application URL in a new browser tab (synchronous during click to avoid popup blocker)
     window.open(targetUrl, '_blank');
@@ -254,15 +255,17 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       await loadData();
       if (onRefreshData) onRefreshData();
     } catch (err: any) {
-      console.error('Application registration error:', err);
+      // The external tab is already open; tell the student we could not
+      // track it so they can retry rather than wonder why it vanished.
+      setApplyError(err?.message || "Couldn't record this application. Please try again.");
     } finally {
       setApplyingJobId(null);
     }
   };
 
   const handleContinueExternalApply = (app: JobApplication) => {
-    const targetUrl = app.applicationUrl || (app as any).externalUrl || 'https://google.com';
-    window.open(targetUrl, '_blank');
+    const targetUrl = applyLink(app as any);
+    if (targetUrl) window.open(targetUrl, '_blank');
     setConfirmationApp(app);
   };
 
@@ -282,7 +285,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       await loadData();
       if (onRefreshData) onRefreshData();
     } catch (err: any) {
-      alert(`Failed to confirm application: ${err.message}`);
+      setApplyError(`Couldn't confirm the application: ${err.message}`);
     } finally {
       setSubmittingConfirmDecline(false);
     }
@@ -317,7 +320,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       await loadData();
       if (onRefreshData) onRefreshData();
     } catch (err: any) {
-      alert(`Failed to save response: ${err.message}`);
+      setApplyError(`Couldn't save your response: ${err.message}`);
     } finally {
       setSubmittingConfirmDecline(false);
     }
@@ -530,7 +533,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       
       {/* Toast Notification */}
       {applySuccessMessage && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center justify-between shadow-2xs">
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{applySuccessMessage}</span>
@@ -541,8 +544,20 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
         </div>
       )}
 
+      {applyError && (
+        <div className="p-3.5 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{applyError}</span>
+          </div>
+          <button onClick={() => setApplyError(null)} className="text-red-700 hover:text-red-900">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {withdrawMessage && (
-        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center justify-between shadow-2xs animate-in fade-in">
+        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center justify-between shadow-sm animate-in fade-in">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{withdrawMessage}</span>
@@ -555,7 +570,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
       {/* Loading state */}
       {loading && !profile && (
-        <div className="py-24 text-center space-y-3 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="py-24 text-center space-y-3 bg-white rounded-2xl border border-border shadow-sm">
           <div className="w-8 h-8 border-2 border-slate-900 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-xs text-slate-500 font-medium">Loading student profile & placement records...</p>
         </div>
@@ -563,19 +578,19 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
       {/* Fallback state if profile failed */}
       {!loading && !profile && (
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center space-y-4 max-w-md mx-auto my-12 shadow-xs">
-          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-500">
+        <div className="bg-white p-8 rounded-2xl border border-border text-center space-y-4 max-w-md mx-auto my-12 shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto text-slate-500">
             <UserIcon className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">Student Profile</h3>
+            <h3 className="text-base font-bold text-foreground">Student Profile</h3>
             <p className="text-xs text-slate-500 mt-1">
               Could not load profile records for active student ({currentStudentId}).
             </p>
           </div>
           <button
             onClick={() => loadData()}
-            className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors"
+            className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
           >
             Retry Loading
           </button>
@@ -589,12 +604,12 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
         <div className="space-y-6">
           
           {/* Welcome Banner & Placement Status */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
                 Student Portal
               </span>
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-0.5">
+              <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight mt-0.5">
                 Welcome back, {profile.fullName}
               </h1>
               <p className="text-xs text-slate-500 mt-1">
@@ -615,7 +630,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     {isEligible ? 'Eligible for Placement' : 'Placement Access Pending'}
                   </span>
                   <span className="text-[10px] font-normal opacity-80 block">
-                    {isEligible ? 'Can browse and apply to active positions' : 'Main Admin evaluation pending'}
+                    {isEligible ? 'Can browse and apply to active positions' : 'Mentor approval pending'}
                   </span>
                 </div>
               </div>
@@ -628,14 +643,14 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             {/* Profile Completion */}
             <div 
               onClick={() => onNavigate && onNavigate('student_profile')}
-              className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs cursor-pointer hover:border-slate-300 transition-colors"
+              className="bg-white p-5 rounded-2xl border border-border shadow-sm cursor-pointer hover:border-primary/40 transition-colors"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Profile Completion</span>
                 <UserIcon className="w-4 h-4 text-blue-600" />
               </div>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-black text-slate-900">
+                <span className="text-3xl font-black text-foreground">
                   {((profile.resumeFileName || profile.resumeDataUrl || resumeUrl) && linkedinUrl && portfolioUrl) ? '100%' : (profile.resumeFileName || profile.resumeDataUrl || resumeUrl) ? '85%' : '60%'}
                 </span>
                 <span className="text-xs text-blue-600 font-semibold">
@@ -650,14 +665,14 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             {/* Matched / Recommended Jobs */}
             <div 
               onClick={() => onNavigate && onNavigate('student_jobs')}
-              className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs cursor-pointer hover:border-slate-300 transition-colors"
+              className="bg-white p-5 rounded-2xl border border-border shadow-sm cursor-pointer hover:border-primary/40 transition-colors"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Recommended Jobs</span>
                 <Briefcase className="w-4 h-4 text-emerald-600" />
               </div>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-black text-slate-900">{recommendedJobs.length}</span>
+                <span className="text-3xl font-black text-foreground">{recommendedJobs.length}</span>
                 <span className="text-xs text-emerald-600 font-semibold">Matching Profile</span>
               </div>
               <p className="text-[11px] text-slate-400 mt-1.5">
@@ -668,14 +683,14 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             {/* Active Applications */}
             <div 
               onClick={() => onNavigate && onNavigate('student_applications')}
-              className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs cursor-pointer hover:border-slate-300 transition-colors"
+              className="bg-white p-5 rounded-2xl border border-border shadow-sm cursor-pointer hover:border-primary/40 transition-colors"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Active Applications</span>
                 <FileText className="w-4 h-4 text-purple-600" />
               </div>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-black text-slate-900">{myApplications.length}</span>
+                <span className="text-3xl font-black text-foreground">{myApplications.length}</span>
                 <span className="text-xs text-purple-600 font-semibold">In Pipeline</span>
               </div>
               <p className="text-[11px] text-slate-400 mt-1.5">
@@ -689,11 +704,11 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Recommended Jobs */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+            <div className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900">Recommended Jobs</h3>
+                    <h3 className="text-sm font-semibold text-foreground">Recommended Jobs</h3>
                     <p className="text-xs text-slate-400 mt-0.5">
                       Matched with your skills & program ({recommendedJobs.length} jobs available)
                     </p>
@@ -719,11 +734,11 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                       const missing = rec.missingSkills || [];
 
                       return (
-                        <div key={job.id} className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5 hover:border-slate-300 transition-colors">
+                        <div key={job.id} className="p-3.5 bg-muted/60 rounded-xl border border-border space-y-2.5 hover:border-primary/40 transition-colors">
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <h4 className="font-bold text-slate-900 text-xs sm:text-sm">{job.title}</h4>
+                                <h4 className="font-bold text-foreground text-xs sm:text-sm">{job.title}</h4>
                                 {job.category && (
                                   <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-100">
                                     {job.category}
@@ -760,14 +775,14 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                           {/* Skills badges */}
                           <div className="flex flex-wrap gap-1">
                             {job.requiredSkills.map((sk: string) => (
-                              <span key={sk} className="px-2 py-0.5 bg-white border border-slate-200 rounded text-slate-700 text-[10px] font-medium">
+                              <span key={sk} className="px-2 py-0.5 bg-white border border-border rounded text-slate-700 text-[10px] font-medium">
                                 {sk}
                               </span>
                             ))}
                           </div>
 
                           {/* "Why this job matches you" breakdown */}
-                          <div className="p-2.5 bg-white rounded-lg border border-slate-100 text-[11px] space-y-1.5">
+                          <div className="p-2.5 bg-white rounded-lg border border-border/70 text-[11px] space-y-1.5">
                             <span className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">Why this job matches you:</span>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-slate-600">
                               <div className="flex items-center gap-1 text-slate-800 font-medium">
@@ -801,7 +816,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                           <div className="flex items-center justify-end pt-1">
                             <button
                               onClick={() => setSelectedJobForModal(job)}
-                              className="px-4 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors cursor-pointer shadow-2xs"
+                              className="px-4 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors cursor-pointer shadow-sm"
                             >
                               Job Details
                             </button>
@@ -815,11 +830,11 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             </div>
 
             {/* Upcoming Interviews */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+            <div className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900">Upcoming Interviews</h3>
+                    <h3 className="text-sm font-semibold text-foreground">Upcoming Interviews</h3>
                     <p className="text-xs text-slate-400 mt-0.5">Scheduled evaluation sessions</p>
                   </div>
                   <button 
@@ -850,7 +865,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                       return (
                         <div key={app.id} className="p-3 bg-purple-50/70 border border-purple-100 rounded-xl text-xs flex items-center justify-between">
                           <div>
-                            <div className="font-semibold text-slate-900">{app.jobTitle}</div>
+                            <div className="font-semibold text-foreground">{app.jobTitle}</div>
                             <div className="text-[11px] text-purple-700 font-medium mt-0.5">
                               {app.company || (app as any).companyName} · {roundTitle}
                             </div>
@@ -874,10 +889,10 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           </div>
 
           {/* My Applied Jobs Section on Dashboard */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs">
+          <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-blue-600" />
                   My Applied Jobs ({myApplications.length})
                 </h3>
@@ -896,24 +911,24 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             </div>
 
             {myApplications.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
+              <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-border rounded-xl">
                 <Briefcase className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                 <p className="font-semibold text-slate-700">No active job applications yet</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">Explore open tech opportunities and apply directly to employer pipelines.</p>
                 <button
                   onClick={() => onNavigate && onNavigate('student_jobs')}
-                  className="mt-3 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                  className="mt-3 px-3 py-1.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   Browse Tech Jobs <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-border/70">
                 {myApplications.map(app => (
                   <div key={app.id} className="py-3.5 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-900 text-xs">{app.jobTitle}</span>
+                        <span className="font-semibold text-foreground text-xs">{app.jobTitle}</span>
                         <span className="text-[11px] text-slate-500">· {app.company}</span>
                       </div>
                       <div className="flex items-center gap-3 text-[11px] text-slate-500">
@@ -946,12 +961,12 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           </div>
 
           {/* Recent Placement Activity */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3">Recent Student Activity</h3>
+          <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Recent Student Activity</h3>
             <div className="space-y-2.5 text-xs text-slate-600">
               <div className="flex items-center gap-2.5 py-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span>Placement eligibility clearance approved by Main Admin.</span>
+                <span>Placement eligibility approved by your mentor.</span>
                 <span className="text-[10px] text-slate-400 ml-auto">2 days ago</span>
               </div>
               <div className="flex items-center gap-2.5 py-1">
@@ -975,42 +990,42 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           ========================================================= */}
       {(currentView === 'student_profile' || currentView === 'profile' || currentView === 'student_profile_details') && profile && (
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-xs">
-            <h2 className="text-base font-bold text-slate-900 mb-4">Student Profile & Academic Records</h2>
+          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
+            <h2 className="text-base font-bold text-foreground mb-4">Student Profile & Academic Records</h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl">
+              <div className="p-3 bg-muted rounded-xl">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Full Name</span>
-                <span className="text-slate-900 font-bold text-sm mt-0.5 block">{profile.fullName}</span>
+                <span className="text-foreground font-bold text-sm mt-0.5 block">{profile.fullName}</span>
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl">
+              <div className="p-3 bg-muted rounded-xl">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Registration Number</span>
-                <span className="text-slate-900 font-bold text-sm mt-0.5 block">{profile.registrationNo}</span>
+                <span className="text-foreground font-bold text-sm mt-0.5 block">{profile.registrationNo}</span>
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl">
+              <div className="p-3 bg-muted rounded-xl">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">School</span>
-                <span className="text-slate-900 font-semibold mt-0.5 block">{profile.school}</span>
+                <span className="text-foreground font-semibold mt-0.5 block">{profile.school}</span>
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl">
+              <div className="p-3 bg-muted rounded-xl">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Program & Batch</span>
-                <span className="text-slate-900 font-semibold mt-0.5 block">{profile.program} ({profile.batch})</span>
+                <span className="text-foreground font-semibold mt-0.5 block">{profile.program} ({profile.batch})</span>
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl">
+              <div className="p-3 bg-muted rounded-xl">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Attendance</span>
-                <span className="text-slate-900 font-bold text-sm mt-0.5 block">{profile.academic.attendancePercentage}%</span>
+                <span className="text-foreground font-bold text-sm mt-0.5 block">{profile.academic.attendancePercentage}%</span>
               </div>
-              <div className="p-3 bg-slate-50 rounded-xl">
+              <div className="p-3 bg-muted rounded-xl">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Academic Score (GPA)</span>
-                <span className="text-slate-900 font-bold text-sm mt-0.5 block">{profile.academic.scores.gpaOrPercentage}</span>
+                <span className="text-foreground font-bold text-sm mt-0.5 block">{profile.academic.scores.gpaOrPercentage}</span>
               </div>
             </div>
 
             {/* Skills */}
-            <div className="mt-5 pt-4 border-t border-slate-100">
+            <div className="mt-5 pt-4 border-t border-border/70">
               <span className="text-xs font-semibold text-slate-700 block mb-2">Verified Technical Skills:</span>
               <div className="flex flex-wrap gap-1.5">
                 {(profile.academic?.skills || (profile as any).skills || []).map(s => (
-                  <span key={s} className="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-lg text-xs font-medium">
+                  <span key={s} className="px-2.5 py-1 bg-muted text-slate-800 rounded-lg text-xs font-medium">
                     {s}
                   </span>
                 ))}
@@ -1019,14 +1034,14 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           </div>
 
           {/* Curriculum Vitae (CV) & Resume File Upload Section */}
-          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-xs">
+          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
                     <FileText className="w-4 h-4" />
                   </div>
-                  <h3 className="text-base font-bold text-slate-900">Curriculum Vitae (CV) & Resume Document</h3>
+                  <h3 className="text-base font-bold text-foreground">Curriculum Vitae (CV) & Resume Document</h3>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/80">
                     Placement Credential
                   </span>
@@ -1080,17 +1095,17 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
             {/* Active Uploaded Document Details Card */}
             {(profile.resumeFileName || profile.resumeDataUrl) ? (
-              <div className="mb-4 p-4 rounded-xl bg-slate-50 border border-slate-200/90 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="mb-4 p-4 rounded-xl bg-muted border border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-start gap-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-red-100 border border-red-200/80 flex items-center justify-center shrink-0 text-red-600 shadow-2xs">
+                  <div className="w-11 h-11 rounded-xl bg-red-100 border border-red-200/80 flex items-center justify-center shrink-0 text-red-600 shadow-sm">
                     <FileText className="w-6 h-6" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                      <span className="font-bold text-foreground text-xs sm:text-sm">
                         {profile.resumeFileName || `${profile.fullName.replace(/\s+/g, '_')}_Resume.pdf`}
                       </span>
-                      <span className="px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded text-[10px] font-bold uppercase tracking-wider">
+                      <span className="px-1.5 py-0.5 bg-secondary text-slate-700 rounded text-[10px] font-bold uppercase tracking-wider">
                         {profile.resumeFileType ? (profile.resumeFileType.includes('word') ? 'DOCX' : profile.resumeFileType.split('/')[1] || 'PDF') : 'PDF'}
                       </span>
                     </div>
@@ -1113,7 +1128,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setPreviewResumeModalOpen(true)}
-                      className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                      className="px-3 py-1.5 bg-white border border-border hover:bg-muted text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
                     >
                       <Eye className="w-3.5 h-3.5 text-slate-500" />
                       Preview
@@ -1123,7 +1138,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   <button
                     type="button"
                     onClick={handleDownloadResume}
-                    className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    className="px-3 py-1.5 bg-white border border-border hover:bg-muted text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
                   >
                     <Download className="w-3.5 h-3.5 text-slate-500" />
                     Download
@@ -1133,7 +1148,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploadingResume}
-                    className="px-3 py-1.5 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+                    className="px-3 py-1.5 bg-primary text-white hover:bg-primary/90 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isUploadingResume ? 'animate-spin text-amber-400' : ''}`} />
                     <span>{isUploadingResume ? 'Uploading...' : 'Replace File'}</span>
@@ -1160,8 +1175,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               onClick={() => fileInputRef.current?.click()}
               className={`p-6 border-2 border-dashed rounded-xl text-center cursor-pointer transition-all ${
                 isDragging 
-                  ? 'border-indigo-500 bg-indigo-50/70 text-indigo-950 scale-[1.005]' 
-                  : 'border-slate-200 hover:border-slate-400 bg-slate-50/50 hover:bg-slate-50'
+                  ? 'border-blue-500 bg-blue-50/70 text-blue-950 scale-[1.005]' 
+                  : 'border-border hover:border-primary/50 bg-muted/60 hover:bg-muted'
               }`}
             >
               <input
@@ -1177,23 +1192,23 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 }}
               />
 
-              <div className="mx-auto w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 mb-3 shadow-2xs">
+              <div className="mx-auto w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-slate-600 mb-3 shadow-sm">
                 {isUploadingResume ? (
-                  <RefreshCw className="w-6 h-6 text-indigo-600 animate-spin" />
+                  <RefreshCw className="w-6 h-6 text-blue-600 animate-spin" />
                 ) : (
-                  <UploadCloud className="w-6 h-6 text-indigo-600" />
+                  <UploadCloud className="w-6 h-6 text-blue-600" />
                 )}
               </div>
 
               {isUploadingResume ? (
                 <div>
-                  <p className="text-xs font-bold text-slate-900">Processing and uploading your CV file...</p>
+                  <p className="text-xs font-bold text-foreground">Processing and uploading your CV file...</p>
                   <p className="text-[11px] text-slate-500 mt-0.5">Encrypting and attaching document to student profile</p>
                 </div>
               ) : isDragging ? (
                 <div>
-                  <p className="text-xs font-bold text-indigo-900">Release document to upload</p>
-                  <p className="text-[11px] text-indigo-700 mt-0.5">PDF or Word document format (.pdf, .doc, .docx)</p>
+                  <p className="text-xs font-bold text-blue-900">Release document to upload</p>
+                  <p className="text-[11px] text-blue-700 mt-0.5">PDF or Word document format (.pdf, .doc, .docx)</p>
                 </div>
               ) : (
                 <div>
@@ -1206,7 +1221,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     Accepts <strong>PDF (.pdf)</strong> and <strong>Word (.doc, .docx)</strong> up to 15MB
                   </p>
                   <div className="mt-3">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 shadow-2xs rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-border shadow-sm rounded-lg text-xs font-semibold text-slate-700 hover:bg-muted transition-colors">
                       <Paperclip className="w-3.5 h-3.5 text-slate-400" /> Choose File from Computer
                     </span>
                   </div>
@@ -1216,8 +1231,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           </div>
 
           {/* Edit Profile Links Form */}
-          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-xs">
-            <h3 className="text-sm font-semibold text-slate-900 mb-1">Portfolio & Professional Profiles</h3>
+          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-1">Portfolio & Professional Profiles</h3>
             <p className="text-xs text-slate-400 mb-4">Employers evaluate these external links when reviewing applications</p>
 
             {linksMessage && (
@@ -1234,7 +1249,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   value={resumeUrl}
                   onChange={e => setResumeUrl(e.target.value)}
                   placeholder="https://drive.google.com/your-resume.pdf"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  className="w-full p-2.5 bg-muted border border-border rounded-lg text-foreground focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
                 />
               </div>
 
@@ -1245,7 +1260,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   value={portfolioUrl}
                   onChange={e => setPortfolioUrl(e.target.value)}
                   placeholder="https://github.com/yourusername"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  className="w-full p-2.5 bg-muted border border-border rounded-lg text-foreground focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
                 />
               </div>
 
@@ -1256,14 +1271,14 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   value={linkedinUrl}
                   onChange={e => setLinkedinUrl(e.target.value)}
                   placeholder="https://linkedin.com/in/yourusername"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  className="w-full p-2.5 bg-muted border border-border rounded-lg text-foreground focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={savingLinks}
-                className="px-4 py-2 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {savingLinks ? 'Saving...' : 'Save Profile Links'}
               </button>
@@ -1279,20 +1294,20 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Technology Opportunities</h2>
+              <h2 className="text-xl font-bold text-foreground tracking-tight">Technology Opportunities</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Verified IT & technology positions ranked against your designation ({profile?.designation || 'Full Stack Developer'}) & skills
+                Verified IT & technology positions ranked against your program ({profile?.program || 'your course'}) & skills
               </p>
             </div>
 
             {/* Tab Switcher: Recommended vs All Tech */}
-            <div className="flex items-center p-1 bg-slate-100 rounded-xl text-xs font-semibold">
+            <div className="flex items-center p-1 bg-muted rounded-xl text-xs font-semibold">
               <button
                 onClick={() => setJobsViewTab('recommended')}
                 className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                   jobsViewTab === 'recommended'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white text-foreground shadow-sm'
+                    : 'text-slate-600 hover:text-foreground'
                 }`}
               >
                 Recommended for You ({recommendedJobs.length})
@@ -1301,8 +1316,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 onClick={() => setJobsViewTab('all')}
                 className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                   jobsViewTab === 'all'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white text-foreground shadow-sm'
+                    : 'text-slate-600 hover:text-foreground'
                 }`}
               >
                 All Technology Jobs ({allJobs.length})
@@ -1311,7 +1326,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           </div>
 
           {/* Filter Bar */}
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex flex-wrap items-center gap-2.5 text-xs">
+          <div className="bg-white p-3.5 rounded-2xl border border-border shadow-sm flex flex-wrap items-center gap-2.5 text-xs">
             {/* Search */}
             <div className="relative min-w-[180px] flex-1">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -1320,7 +1335,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 placeholder="Search job title, company, skill..."
                 value={jobSearch}
                 onChange={e => setJobSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                className="w-full pl-8 pr-3 py-1.5 bg-muted border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
             </div>
 
@@ -1329,7 +1344,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               <select
                 value={jobCategoryFilter}
                 onChange={e => setJobCategoryFilter(e.target.value)}
-                className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer font-medium"
+                className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer font-medium"
               >
                 <option value="ALL">Category: All Tech</option>
                 <option value="Software Development">Software Development</option>
@@ -1356,7 +1371,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 placeholder="Role / Designation..."
                 value={jobDesignationFilter}
                 onChange={e => setJobDesignationFilter(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 text-slate-800"
+                className="w-full px-3 py-1.5 text-xs bg-muted border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-slate-800"
               />
             </div>
 
@@ -1365,7 +1380,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               <select
                 value={jobExperienceFilter}
                 onChange={e => setJobExperienceFilter(e.target.value)}
-                className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+                className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
               >
                 <option value="ALL">Experience: All</option>
                 <option value="ENTRY">Entry / Fresh</option>
@@ -1380,7 +1395,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <select
                   value={jobScoreFilter}
                   onChange={e => setJobScoreFilter(e.target.value)}
-                  className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer font-medium"
+                  className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer font-medium"
                 >
                   <option value="ALL">Match: All Levels</option>
                   <option value="80">80%+ Excellent Match</option>
@@ -1525,13 +1540,13 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   const matchScore = rec.matchScore ?? 80;
 
                   return (
-                    <div key={job.id} className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors space-y-3">
+                    <div key={job.id} className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col justify-between hover:border-primary/40 transition-colors space-y-3">
                       <div className="space-y-2">
                         {/* Title & Match Score Header */}
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <h3 className="font-bold text-slate-900 text-sm">{job.title}</h3>
+                              <h3 className="font-bold text-foreground text-sm">{job.title}</h3>
                               {job.category && (
                                 <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-100">
                                   {job.category}
@@ -1570,19 +1585,19 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                         </div>
 
                         <p className="text-xs text-slate-600 line-clamp-2 mt-1">
-                          {job.description}
+                          {plainText(job.description)}
                         </p>
 
                         <div className="flex flex-wrap gap-1 pt-1">
                           {job.requiredSkills.map((s: string) => (
-                            <span key={s} className="px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-slate-600 text-[10px]">
+                            <span key={s} className="px-2 py-0.5 rounded bg-muted border border-border text-slate-600 text-[10px]">
                               {s}
                             </span>
                           ))}
                         </div>
 
                         {/* Match Explanation Box */}
-                        <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100 text-[11px] space-y-1 mt-2">
+                        <div className="p-2.5 bg-muted rounded-lg border border-border/70 text-[11px] space-y-1 mt-2">
                           <span className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">Why this job matches you:</span>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-slate-600">
                             <div className="flex items-center gap-1 text-slate-800 font-medium">
@@ -1614,7 +1629,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                         </div>
                       </div>
 
-                      <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
+                      <div className="pt-3 mt-3 border-t border-border/70 flex items-center justify-between">
                         <span className="text-[11px] text-slate-400">
                           Source: <strong className="text-slate-700">{formatChannelName(job.sourceChannel)}</strong>
                         </span>
@@ -1626,7 +1641,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                         ) : (
                           <button
                             onClick={() => setSelectedJobForModal(job)}
-                            className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                            className="px-4 py-1.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-sm"
                           >
                             Job Details
                           </button>
@@ -1676,12 +1691,12 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   const matchingRec = recommendedJobs.find(r => r.job.id === job.id);
 
                   return (
-                    <div key={job.id} className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors space-y-3">
+                    <div key={job.id} className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col justify-between hover:border-primary/40 transition-colors space-y-3">
                       <div className="space-y-2">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <h3 className="font-bold text-slate-900 text-sm">{job.title}</h3>
+                              <h3 className="font-bold text-foreground text-sm">{job.title}</h3>
                               {job.category && (
                                 <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-100">
                                   {job.category}
@@ -1717,19 +1732,19 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                         </div>
 
                         <p className="text-xs text-slate-600 line-clamp-2 mt-1">
-                          {job.description}
+                          {plainText(job.description)}
                         </p>
 
                         <div className="flex flex-wrap gap-1 pt-1">
                           {job.requiredSkills.map((s: string) => (
-                            <span key={s} className="px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-slate-600 text-[10px]">
+                            <span key={s} className="px-2 py-0.5 rounded bg-muted border border-border text-slate-600 text-[10px]">
                               {s}
                             </span>
                           ))}
                         </div>
                       </div>
 
-                      <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
+                      <div className="pt-3 mt-3 border-t border-border/70 flex items-center justify-between">
                         <span className="text-[11px] text-slate-400">
                           Source: <strong className="text-slate-700">{formatChannelName(job.sourceChannel)}</strong>
                         </span>
@@ -1741,7 +1756,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                         ) : (
                           <button
                             onClick={() => setSelectedJobForModal(job)}
-                            className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                            className="px-4 py-1.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-sm"
                           >
                             Job Details
                           </button>
@@ -1762,23 +1777,23 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       {(currentView === 'student_applications' || currentView === 'applications' || currentView === 'my_applications') && (
         <div className="space-y-6">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Application Pipeline Tracking</h2>
+            <h2 className="text-xl font-bold text-foreground tracking-tight">Application Pipeline Tracking</h2>
             <p className="text-xs text-slate-500 mt-0.5">Real-time progression through recruitment milestones</p>
           </div>
 
           <div className="space-y-4">
             {myApplications.length === 0 ? (
-              <div className="bg-white p-12 text-center rounded-xl border border-slate-200 text-xs text-slate-400">
+              <div className="bg-white p-12 text-center rounded-2xl border border-border text-xs text-slate-400">
                 You have not submitted any job applications yet. Go to "Find Jobs" to start applying!
               </div>
             ) : (
               myApplications.map(app => (
-                <div key={app.id} className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs space-y-4">
+                <div key={app.id} className="bg-white p-5 rounded-2xl border border-border shadow-sm space-y-4">
                   
                   {/* App Header */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                      <h3 className="font-bold text-slate-900 text-sm">{app.jobTitle}</h3>
+                      <h3 className="font-bold text-foreground text-sm">{app.jobTitle}</h3>
                       <p className="text-xs text-slate-500">{app.company || (app as any).companyName} · Applied on {new Date(app.appliedAt).toLocaleDateString()}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -1822,7 +1837,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
                   {/* NOT APPLIED Reason Banner */}
                   {app.status === 'NOT_APPLIED' && app.declineReason && (
-                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+                    <div className="p-3 bg-muted border border-border rounded-xl text-xs space-y-1">
                       <div className="flex items-center gap-2 font-bold text-slate-800">
                         <AlertCircle className="w-4 h-4 text-slate-500 shrink-0" />
                         <span>Reason Recorded: {app.declineReason.replace(/_/g, ' ')}</span>
@@ -1842,7 +1857,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   )}
 
                   {/* Visual Pipeline Bar */}
-                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="bg-muted p-3 rounded-xl border border-border/70">
                     <div className="flex items-center justify-between text-[10px] font-semibold text-slate-400 mb-1.5">
                       <span>Applied</span>
                       <span>Shortlisted</span>
@@ -1865,10 +1880,10 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                               app.status === 'REJECTED' 
                                 ? 'bg-rose-200' 
                                 : isCurrent 
-                                ? 'bg-slate-900 ring-2 ring-slate-900/20' 
+                                ? 'bg-primary ring-2 ring-slate-900/20' 
                                 : isReached 
                                 ? 'bg-emerald-500' 
-                                : 'bg-slate-200'
+                                : 'bg-secondary'
                             }`} 
                           />
                         );
@@ -1924,10 +1939,10 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Scheduled Interviews</h2>
+              <h2 className="text-xl font-bold text-foreground tracking-tight">Scheduled Interviews</h2>
               <p className="text-xs text-slate-500 mt-0.5">Direct recruiter rounds and technical assessments</p>
             </div>
-            <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-lg">
+            <span className="text-xs text-slate-400 bg-muted px-3 py-1 rounded-lg">
               Testing Mode: Quick Status Updates
             </span>
           </div>
@@ -1945,10 +1960,10 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 : 'Pending Confirmation';
 
               return (
-                <div key={app.id} className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div key={app.id} className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900 text-sm">{app.company || (app as any).companyName}</span>
+                      <span className="font-bold text-foreground text-sm">{app.company || (app as any).companyName}</span>
                       <span className="text-xs text-slate-400">· {app.jobTitle}</span>
                     </div>
                     <div className="text-xs text-slate-600 flex items-center gap-3">
@@ -1992,19 +2007,19 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       {(currentView === 'student_notifications' || currentView === 'notifications') && (
         <div className="space-y-6">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Notifications</h2>
+            <h2 className="text-xl font-bold text-foreground tracking-tight">Notifications</h2>
             <p className="text-xs text-slate-500 mt-0.5">Important announcements, schedule changes, and application updates</p>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs divide-y divide-slate-100 text-xs">
+          <div className="bg-white rounded-2xl border border-border shadow-sm divide-y divide-border/70 text-xs">
             <div className="p-4 flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
                 <Check className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <div className="font-semibold text-slate-900">Placement Eligibility Granted</div>
+                <div className="font-semibold text-foreground">Placement Eligibility Granted</div>
                 <div className="text-slate-500 mt-0.5">
-                  Your academic records and placement eligibility have been reviewed and approved by the Main Admin.
+                  Your academic records and placement eligibility have been reviewed and approved by your mentor.
                 </div>
                 <div className="text-[10px] text-slate-400 mt-1">Yesterday at 4:30 PM</div>
               </div>
@@ -2015,7 +2030,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <Briefcase className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <div className="font-semibold text-slate-900">New Requisition Matched: ABC Technologies</div>
+                <div className="font-semibold text-foreground">New Requisition Matched: ABC Technologies</div>
                 <div className="text-slate-500 mt-0.5">
                   A new role matching your skills in React and TypeScript is open for applications.
                 </div>
@@ -2028,7 +2043,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <Calendar className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <div className="font-semibold text-slate-900">Mock Interview Round Scheduled</div>
+                <div className="font-semibold text-foreground">Mock Interview Round Scheduled</div>
                 <div className="text-slate-500 mt-0.5">
                   Technical interview screening scheduled for tomorrow afternoon.
                 </div>
@@ -2043,18 +2058,18 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           JOB DETAILS & APPLICATION MODAL
           ========================================================= */}
       {selectedJobForModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl border border-border w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
             
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div className="p-5 border-b border-border/70 flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Position Details</span>
-                <h3 className="text-base font-bold text-slate-900 mt-0.5">{selectedJobForModal.title}</h3>
+                <h3 className="text-base font-bold text-foreground mt-0.5">{selectedJobForModal.title}</h3>
                 <p className="text-xs text-slate-500">{selectedJobForModal.company} · {selectedJobForModal.location}</p>
               </div>
               <button
                 onClick={() => setSelectedJobForModal(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-muted"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2063,12 +2078,12 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             <div className="p-5 overflow-y-auto space-y-4 text-xs">
               <div>
                 <span className="font-semibold text-slate-700 block mb-1">Role Description:</span>
-                <p className="text-slate-600 leading-relaxed">{selectedJobForModal.description}</p>
+                <p className="text-slate-600 leading-relaxed whitespace-pre-line">{plainText(selectedJobForModal.description)}</p>
               </div>
 
               <div>
                 <span className="font-semibold text-slate-700 block mb-1">Eligibility Criteria:</span>
-                <div className="p-3 bg-slate-50 rounded-xl space-y-1 text-[11px] text-slate-600">
+                <div className="p-3 bg-muted rounded-xl space-y-1 text-[11px] text-slate-600">
                   <div>• Target Schools: <strong>{(selectedJobForModal.eligibleSchools && selectedJobForModal.eligibleSchools.length > 0) ? selectedJobForModal.eligibleSchools.join(', ') : (selectedJobForModal as any).targetSchool || 'All Schools'}</strong></div>
                   <div>• Target Programs: <strong>{(selectedJobForModal.eligiblePrograms && selectedJobForModal.eligiblePrograms.length > 0) ? selectedJobForModal.eligiblePrograms.join(', ') : (selectedJobForModal as any).targetProgram || 'All Programs'}</strong></div>
                   <div>• Experience: <strong>{selectedJobForModal.experienceRequirement || `${selectedJobForModal.minExperienceYears || 0} years`}</strong></div>
@@ -2080,7 +2095,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <span className="font-semibold text-slate-700 block mb-1">Required Skills:</span>
                 <div className="flex flex-wrap gap-1">
                   {selectedJobForModal.requiredSkills.map(s => (
-                    <span key={s} className="px-2 py-0.5 rounded bg-slate-100 text-slate-800 text-[11px]">
+                    <span key={s} className="px-2 py-0.5 rounded bg-muted text-slate-800 text-[11px]">
                       {s}
                     </span>
                   ))}
@@ -2092,7 +2107,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-blue-600 shrink-0" />
                   <div>
-                    <span className="font-bold text-slate-900">Attached CV / Resume: </span>
+                    <span className="font-bold text-foreground">Attached CV / Resume: </span>
                     <span className="text-slate-600 font-medium">
                       {profile?.resumeFileName || (profile?.resumeUrl ? 'Profile Document Linked' : 'No CV uploaded yet')}
                     </span>
@@ -2117,10 +2132,10 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               </div>
             </div>
 
-            <div className="p-4 px-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between flex-wrap gap-2">
+            <div className="p-4 px-5 border-t border-border/70 bg-muted flex items-center justify-between flex-wrap gap-2">
               <button
                 onClick={() => setSelectedJobForModal(null)}
-                className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-100 cursor-pointer"
+                className="px-3.5 py-1.5 bg-white border border-border text-slate-700 rounded-lg text-xs font-semibold hover:bg-muted cursor-pointer"
               >
                 Cancel
               </button>
@@ -2146,7 +2161,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                               setSelectedJobForModal(null);
                               handleContinueExternalApply(appliedApp);
                             }}
-                            className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                            className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                             <span>Continue Application ↗</span>
@@ -2169,7 +2184,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                         <button
                           disabled={!targetUrl || isApplying}
                           onClick={() => handleExternalApply(selectedJobForModal)}
-                          className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer disabled:opacity-60"
+                          className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer disabled:opacity-60"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                           <span>Apply Again ↗</span>
@@ -2188,7 +2203,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                             href={targetUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors"
+                            className="px-3 py-1.5 bg-muted hover:bg-secondary text-slate-700 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                             <span>View Job Portal ↗</span>
@@ -2212,7 +2227,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     return (
                       <button
                         disabled
-                        className="px-4 py-1.5 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-xs font-medium cursor-not-allowed"
+                        className="px-4 py-1.5 bg-muted text-slate-400 border border-border rounded-lg text-xs font-medium cursor-not-allowed"
                       >
                         Application link unavailable
                       </button>
@@ -2223,7 +2238,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     <button
                       disabled={isApplying}
                       onClick={() => handleExternalApply(selectedJobForModal)}
-                      className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs disabled:opacity-60 cursor-pointer"
+                      className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-60 cursor-pointer"
                     >
                       <ExternalLink className="w-4 h-4 text-blue-200" />
                       <span>{isApplying ? 'Opening Portal...' : 'Apply on Official Job Portal ↗'}</span>
@@ -2241,10 +2256,10 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           REJECTION FEEDBACK LOGGING MODAL
           ========================================================= */}
       {selectedAppForFeedback && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl border border-border w-full max-w-md overflow-hidden p-6 space-y-4">
             <div>
-              <h3 className="text-base font-bold text-slate-900">Log Student Rejection Feedback</h3>
+              <h3 className="text-base font-bold text-foreground">Log Student Rejection Feedback</h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 Record the primary gap identified during evaluation to schedule targeted coaching.
               </p>
@@ -2256,7 +2271,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <select
                   value={feedbackCategory}
                   onChange={e => setFeedbackCategory(e.target.value as RejectionCategory)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900"
+                  className="w-full p-2.5 bg-muted border border-border rounded-lg text-foreground"
                 >
                   <option value="TECHNICAL_SKILL_GAP">Technical Skill Gap</option>
                   <option value="COMMUNICATION_GAP">Communication Gap</option>
@@ -2275,7 +2290,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   onChange={e => setFeedbackDetails(e.target.value)}
                   placeholder="e.g., Needs improvement in system design and data structures..."
                   required
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white"
+                  className="w-full p-2.5 bg-muted border border-border rounded-lg text-foreground focus:bg-white"
                 />
               </div>
 
@@ -2286,7 +2301,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   value={remedialAction}
                   onChange={e => setRemedialAction(e.target.value)}
                   placeholder="e.g., Attend coding workshop, refine capstone repository..."
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white"
+                  className="w-full p-2.5 bg-muted border border-border rounded-lg text-foreground focus:bg-white"
                 />
               </div>
 
@@ -2294,14 +2309,14 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedAppForFeedback(null)}
-                  className="px-3.5 py-1.5 bg-slate-100 text-slate-700 rounded-lg font-medium"
+                  className="px-3.5 py-1.5 bg-muted text-slate-700 rounded-lg font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingFeedback}
-                  className="px-4 py-1.5 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 disabled:opacity-50"
+                  className="px-4 py-1.5 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50"
                 >
                   {submittingFeedback ? 'Saving...' : 'Save Feedback'}
                 </button>
@@ -2315,15 +2330,15 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           CV / RESUME DOCUMENT PREVIEW MODAL
           ========================================================= */}
       {previewResumeModalOpen && profile && (profile.resumeDataUrl || profile.resumeUrl) && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="p-4 px-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+        <div className="fixed inset-0 z-50 bg-navy/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-border shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="p-4 px-6 border-b border-border/70 flex items-center justify-between bg-muted/60">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-sm leading-tight">
+                  <h3 className="font-bold text-foreground text-sm leading-tight">
                     {profile.resumeFileName || `${profile.fullName.replace(/\s+/g, '_')}_CV.pdf`}
                   </h3>
                   <p className="text-[11px] text-slate-500 mt-0.5">
@@ -2336,7 +2351,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <button
                   type="button"
                   onClick={handleDownloadResume}
-                  className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  className="px-3 py-1.5 bg-white border border-border hover:bg-muted text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Download
@@ -2344,27 +2359,27 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setPreviewResumeModalOpen(false)}
-                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-secondary transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            <div className="p-4 flex-1 overflow-auto bg-slate-100/90 flex items-center justify-center min-h-[440px]">
+            <div className="p-4 flex-1 overflow-auto bg-muted flex items-center justify-center min-h-[440px]">
               {((profile.resumeDataUrl || profile.resumeUrl)?.startsWith('data:application/pdf') || 
                 (profile.resumeFileName && profile.resumeFileName.toLowerCase().endsWith('.pdf'))) ? (
                 <iframe
                   src={profile.resumeDataUrl || profile.resumeUrl}
-                  className="w-full h-[68vh] rounded-xl shadow-xs bg-white border border-slate-200"
+                  className="w-full h-[68vh] rounded-2xl shadow-sm bg-white border border-border"
                   title="CV Document Preview"
                 />
               ) : (
-                <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center max-w-md shadow-sm">
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4 border border-indigo-100">
+                <div className="bg-white p-8 rounded-2xl border border-border text-center max-w-md shadow-sm">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4 border border-blue-100">
                     <FileCheck className="w-8 h-8" />
                   </div>
-                  <h4 className="font-bold text-slate-900 text-base mb-1">
+                  <h4 className="font-bold text-foreground text-base mb-1">
                     {profile.resumeFileName || 'CV Document Attached'}
                   </h4>
                   <p className="text-xs text-slate-500 mb-6 leading-relaxed">
@@ -2372,7 +2387,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   </p>
                   <button
                     onClick={handleDownloadResume}
-                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm"
+                    className="w-full py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm"
                   >
                     <Download className="w-4 h-4" /> Download Document
                   </button>
@@ -2380,12 +2395,12 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               )}
             </div>
 
-            <div className="p-3 px-6 border-t border-slate-100 bg-white flex items-center justify-between text-xs text-slate-500">
+            <div className="p-3 px-6 border-t border-border/70 bg-white flex items-center justify-between text-xs text-slate-500">
               <span>Attached to <strong>{profile.fullName}</strong> ({profile.registrationNo})</span>
               <button
                 type="button"
                 onClick={() => setPreviewResumeModalOpen(false)}
-                className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-semibold transition-colors cursor-pointer"
+                className="px-4 py-1.5 bg-muted hover:bg-secondary text-slate-800 rounded-lg font-semibold transition-colors cursor-pointer"
               >
                 Close
               </button>
@@ -2402,22 +2417,22 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           onClick={(e) => {
             if (e.target === e.currentTarget) setConfirmationApp(null);
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/60 backdrop-blur-xs animate-in fade-in duration-150"
         >
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150 p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="bg-white rounded-2xl shadow-xl border border-border w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-border/70 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
                   ↗
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Official Portal Opened</h3>
+                  <h3 className="text-sm font-bold text-foreground">Official Portal Opened</h3>
                   <p className="text-[11px] text-slate-500">{confirmationApp.jobTitle} · {confirmationApp.company}</p>
                 </div>
               </div>
               <button
                 onClick={() => setConfirmationApp(null)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-muted"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2432,7 +2447,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               <button
                 disabled={submittingConfirmDecline}
                 onClick={() => handleConfirmApplication(confirmationApp.id)}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-xs cursor-pointer disabled:opacity-60"
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-sm cursor-pointer disabled:opacity-60"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Yes, I Applied</span>
@@ -2441,7 +2456,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               <button
                 disabled={submittingConfirmDecline}
                 onClick={() => handleOpenDeclineModal(confirmationApp)}
-                className="w-full py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
+                className="w-full py-2.5 bg-white border border-slate-300 hover:bg-muted text-slate-700 font-semibold rounded-2xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
               >
                 <X className="w-4 h-4 text-slate-400" />
                 <span>No, I Didn't Apply</span>
@@ -2459,16 +2474,16 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           DECLINE REASON MODAL
           ========================================================= */}
       {declineApp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-xl border border-border w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-border/70 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Reason for Not Applying</h3>
+                <h3 className="text-base font-bold text-foreground">Reason for Not Applying</h3>
                 <p className="text-xs text-slate-500">{declineApp.jobTitle} · {declineApp.company}</p>
               </div>
               <button
                 onClick={() => setDeclineApp(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-muted"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2482,7 +2497,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <select
                   value={declineReason}
                   onChange={(e) => setDeclineReason(e.target.value as ApplicationDeclineReason)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  className="w-full p-2.5 bg-muted border border-border rounded-2xl text-xs text-foreground font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
                 >
                   {DECLINE_REASON_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>
@@ -2501,7 +2516,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   value={declineComment}
                   onChange={(e) => setDeclineComment(e.target.value)}
                   placeholder="Share any specific reason or feedback..."
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  className="w-full p-2.5 bg-muted border border-border rounded-2xl text-xs text-foreground focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
 
@@ -2519,28 +2534,28 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                       onChange={(e) => setNeedsHelp(e.target.checked)}
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+                    <div className="w-9 h-5 bg-secondary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
                   </label>
                 </div>
                 {needsHelp && (
                   <p className="text-[11px] text-amber-800">
-                    Flagging this will notify Placement Officers to assist you with eligibility, skill gaps, or application issues.
+                    Flagging this will notify Placement Teams to assist you with eligibility, skill gaps, or application issues.
                   </p>
                 )}
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-border/70 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setDeclineApp(null)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-slate-700 font-semibold hover:bg-slate-50"
+                  className="px-4 py-2 border border-border rounded-xl text-slate-700 font-semibold hover:bg-muted"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingConfirmDecline}
-                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-colors disabled:opacity-60"
+                  className="px-5 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold transition-colors disabled:opacity-60"
                 >
                   {submittingConfirmDecline ? 'Submitting...' : 'Save Response'}
                 </button>
