@@ -223,21 +223,21 @@ export const IntegrationsView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900 tracking-tight">System Integrations</h2>
+          <h2 className="text-xl font-semibold text-foreground tracking-tight">System Integrations</h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Automated synchronization with the Academic LMS, Apify LinkedIn Scraper, and Public ATS Job APIs
           </p>
         </div>
 
         {/* 2:00 AM Schedule Badge */}
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-semibold shadow-2xs">
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-semibold shadow-sm">
           <Clock className="w-4 h-4 text-blue-600" />
           <span>Scheduled Daily Update · 2:00 AM</span>
         </div>
       </div>
 
       {/* Automated Sync Status Banner */}
-      <div className="p-4 rounded-xl bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+      <div className="p-4 rounded-xl bg-primary text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
             <Clock className="w-4 h-4" />
@@ -259,7 +259,7 @@ export const IntegrationsView: React.FC = () => {
         {/* =========================================================
             1. ACADEMIC LMS INTEGRATION CARD
             ========================================================= */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col justify-between space-y-4">
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -267,7 +267,7 @@ export const IntegrationsView: React.FC = () => {
                   <Database className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Academic LMS Adapter</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Academic LMS Adapter</h3>
                   <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                     {lmsConfig.status}
@@ -281,13 +281,13 @@ export const IntegrationsView: React.FC = () => {
             </p>
 
             <div className="grid grid-cols-2 gap-3 mt-4 text-xs">
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+              <div className="p-3 bg-muted rounded-lg border border-border/70">
                 <span className="text-[11px] text-slate-400 block">Total Synced</span>
-                <span className="text-sm font-bold text-slate-900 mt-0.5 block">{lmsConfig.totalRecordsSynced} Records</span>
+                <span className="text-sm font-bold text-foreground mt-0.5 block">{lmsConfig.totalRecordsSynced} Records</span>
               </div>
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+              <div className="p-3 bg-muted rounded-lg border border-border/70">
                 <span className="text-[11px] text-slate-400 block">Auto-Sync Interval</span>
-                <span className="text-sm font-bold text-slate-900 mt-0.5 block">Every {lmsConfig.autoSyncIntervalMinutes} mins</span>
+                <span className="text-sm font-bold text-foreground mt-0.5 block">Every {lmsConfig.autoSyncIntervalMinutes} mins</span>
               </div>
             </div>
 
@@ -298,11 +298,11 @@ export const IntegrationsView: React.FC = () => {
             )}
           </div>
 
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+          <div className="pt-3 border-t border-border/70 flex items-center justify-between">
             <span className="text-[11px] text-slate-400">
               Last sync: {new Date(lmsConfig.lastSyncTimestamp || Date.now()).toLocaleTimeString()}
             </span>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-slate-700 text-xs font-semibold border border-border">
               <Clock className="w-3.5 h-3.5 text-blue-600" />
               <span>Auto-Syncs at 2:00 AM</span>
             </div>
@@ -312,7 +312,7 @@ export const IntegrationsView: React.FC = () => {
         {/* =========================================================
             2. APIFY JOB SCRAPER INTEGRATION CARD (Standardized)
             ========================================================= */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col justify-between space-y-4">
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -320,7 +320,7 @@ export const IntegrationsView: React.FC = () => {
                   <Bot className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Job Scraper</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Job Scraper</h3>
                   <p className="text-[11px] text-slate-500">Real-time employer Requisition Scraper</p>
                 </div>
               </div>
@@ -329,14 +329,14 @@ export const IntegrationsView: React.FC = () => {
               </span>
             </div>
 
-            <div className="mt-4 p-3.5 bg-slate-50/80 rounded-xl border border-slate-100 space-y-2 text-xs">
+            <div className="mt-4 p-3.5 bg-muted/60 rounded-xl border border-border/70 space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Provider:</span>
-                <span className="font-semibold text-slate-900">Apify</span>
+                <span className="font-semibold text-foreground">Apify</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Connection:</span>
-                <span className="flex items-center gap-1.5 font-semibold text-slate-900">
+                <span className="flex items-center gap-1.5 font-semibold text-foreground">
                   {apifyStatus?.connected ? (
                     <>
                       <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -354,7 +354,7 @@ export const IntegrationsView: React.FC = () => {
                 <span className="text-slate-500">Actor:</span>
                 <span className="font-medium text-slate-800">
                   {apifyStatus?.actorConfigured !== false ? (
-                    <span className="text-slate-900 font-semibold">Configured ({apifyStatus?.actorTitle || 'LinkedIn Scraper'})</span>
+                    <span className="text-foreground font-semibold">Configured ({apifyStatus?.actorTitle || 'LinkedIn Scraper'})</span>
                   ) : (
                     <span className="text-amber-600">Not Configured</span>
                   )}
@@ -366,7 +366,7 @@ export const IntegrationsView: React.FC = () => {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Jobs Fetched:</span>
-                <span className="font-bold text-slate-900">{scraperConfig.leadsProcessedTotal} Opportunities</span>
+                <span className="font-bold text-foreground">{scraperConfig.leadsProcessedTotal} Opportunities</span>
               </div>
             </div>
 
@@ -401,7 +401,7 @@ export const IntegrationsView: React.FC = () => {
           </div>
 
           {/* Action Area: Test Connection + Auto-sync info */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2.5">
+          <div className="pt-3 border-t border-border/70 flex items-center justify-between gap-2.5">
             <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
               <Clock className="w-3.5 h-3.5 text-purple-600" />
               <span>Daily at 2:00 AM</span>
@@ -410,7 +410,7 @@ export const IntegrationsView: React.FC = () => {
             <button
               onClick={handleTestConnection}
               disabled={testingApify || fetchingJobs}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+              className="px-3 py-1.5 rounded-lg border border-border bg-white text-slate-700 hover:bg-muted text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
             >
               <Activity className={`w-3.5 h-3.5 text-slate-500 ${testingApify ? 'animate-pulse text-purple-600' : ''}`} />
               <span>{testingApify ? 'Testing...' : 'Test Connection'}</span>
@@ -421,7 +421,7 @@ export const IntegrationsView: React.FC = () => {
         {/* =========================================================
             3. PUBLIC ATS JOB API INTEGRATION CARD (New Source)
             ========================================================= */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col justify-between space-y-4">
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -429,7 +429,7 @@ export const IntegrationsView: React.FC = () => {
                   <Globe2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Public ATS API</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Public ATS API</h3>
                   <p className="text-[11px] text-slate-500">Greenhouse, Lever & Ashby Direct Feeds</p>
                 </div>
               </div>
@@ -438,14 +438,14 @@ export const IntegrationsView: React.FC = () => {
               </span>
             </div>
 
-            <div className="mt-4 p-3.5 bg-slate-50/80 rounded-xl border border-slate-100 space-y-2 text-xs">
+            <div className="mt-4 p-3.5 bg-muted/60 rounded-xl border border-border/70 space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Connectors:</span>
-                <span className="font-semibold text-slate-900">Greenhouse · Lever · Ashby</span>
+                <span className="font-semibold text-foreground">Greenhouse · Lever · Ashby</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Connection:</span>
-                <span className="flex items-center gap-1.5 font-semibold text-slate-900">
+                <span className="flex items-center gap-1.5 font-semibold text-foreground">
                   {atsStatus?.connected ? (
                     <>
                       <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -475,7 +475,7 @@ export const IntegrationsView: React.FC = () => {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Jobs Ingested:</span>
-                <span className="font-bold text-slate-900">{atsConfig?.leadsProcessedTotal || 0} Opportunities</span>
+                <span className="font-bold text-foreground">{atsConfig?.leadsProcessedTotal || 0} Opportunities</span>
               </div>
             </div>
 
@@ -510,7 +510,7 @@ export const IntegrationsView: React.FC = () => {
           </div>
 
           {/* Action Area: Test Connection + Auto-sync info */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2.5">
+          <div className="pt-3 border-t border-border/70 flex items-center justify-between gap-2.5">
             <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
               <Clock className="w-3.5 h-3.5 text-teal-600" />
               <span>Daily at 2:00 AM</span>
@@ -519,7 +519,7 @@ export const IntegrationsView: React.FC = () => {
             <button
               onClick={handleTestAts}
               disabled={testingAts || syncingAts}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+              className="px-3 py-1.5 rounded-lg border border-border bg-white text-slate-700 hover:bg-muted text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
             >
               <Activity className={`w-3.5 h-3.5 text-slate-500 ${testingAts ? 'animate-pulse text-teal-600' : ''}`} />
               <span>{testingAts ? 'Testing...' : 'Test Connection'}</span>

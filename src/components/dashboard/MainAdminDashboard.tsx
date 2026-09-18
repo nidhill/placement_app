@@ -80,7 +80,7 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
       await api.setAdminStudentEligibility(
         student.id,
         makeEligible,
-        makeEligible ? 'Approved for placement by Main Admin (Testing Phase)' : 'Marked not eligible by Main Admin'
+        makeEligible ? 'Approved for placement by admin override' : 'Marked not eligible by admin'
       );
       setStatusMessage(`Updated ${student.fullName}'s status to ${makeEligible ? 'ELIGIBLE' : 'NOT_ELIGIBLE'}`);
       await loadData();
@@ -112,14 +112,19 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
   const placementRate = eligibleStudents > 0 ? Math.round((studentsPlaced / eligibleStudents) * 100) : (kpis.overallPlacementRate ?? 0);
 
   // Trend data points for clean SVG
-  const trendPoints = [
-    { month: 'Jan', rate: 28 },
-    { month: 'Feb', rate: 38 },
-    { month: 'Mar', rate: 46 },
-    { month: 'Apr', rate: 54 },
-    { month: 'May', rate: 62 },
-    { month: 'Jun', rate: placementRate },
-  ];
+  // Real monthly trend: placed ÷ eligible, cumulative, over the last six months.
+  const trendPoints = (() => {
+    const now = new Date();
+    const months: { month: string; rate: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      const placedByThen = applications.filter(a => (a.status === 'JOINED' || a.status === 'SELECTED') && new Date(a.updatedAt) < end).length;
+      months.push({ month: d.toLocaleString('en-IN', { month: 'short' }), rate: eligibleStudents > 0 ? Math.round((placedByThen / eligibleStudents) * 100) : 0 });
+    }
+    return months;
+  })();
+
 
   const filteredModalStudents = students.filter(s => {
     if (!modalSearch.trim()) return true;
@@ -134,35 +139,31 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
       <div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Main Admin Placement Overview
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Executive authority & institutional placement control
-            </p>
+            <h2 className="text-lg font-bold text-foreground tracking-tight">Placement Overview</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Eligible students, open jobs and where the pipeline stands</p>
           </div>
 
           {/* Important Action: Student Eligibility */}
           <button
             onClick={() => setIsEligibilityModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition-all shadow-xs"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-semibold hover:bg-primary/90 transition-all shadow-sm"
           >
             <ShieldCheck className="w-4 h-4 text-amber-400" />
             <span>Manage Student Eligibility</span>
             {pendingEligibilityCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-900 text-[10px] font-bold">
+              <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-400 text-foreground text-[10px] font-bold">
                 {pendingEligibilityCount}
               </span>
             )}
           </button>
         </div>
 
-        {/* Notice Banner: Testing Phase Workflow */}
-        <div className="mt-4 p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-start gap-3 text-xs text-amber-900">
-          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        {/* How students get in: mentors approve in the SHO App; this tool only overrides. */}
+        <div className="mt-4 p-3.5 bg-secondary border border-primary/15 rounded-2xl flex items-start gap-3 text-xs text-secondary-foreground">
+          <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
           <div>
-            <span className="font-semibold text-amber-950">Placement Eligibility Review:</span>{' '}
-            Student placement eligibility is directly reviewed and administered by Main Admin during this testing phase.
+            <span className="font-semibold text-foreground">Eligibility:</span>{' '}
+            Mentors mark students placement-eligible in the SHO App (Placement Eligibility page); they appear here after a sync. Use the override only for exceptions.
           </div>
         </div>
       </div>
@@ -173,10 +174,10 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
         {/* 1. Total Students */}
         <div 
           onClick={() => onNavigate('students')}
-          className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-colors cursor-pointer"
+          className="bg-white p-3.5 rounded-2xl border border-border shadow-sm hover:border-primary/40 transition-colors cursor-pointer"
         >
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Total Students</div>
-          <div className="mt-1 text-xl font-bold text-slate-900">{totalStudents}</div>
+          <div className="mt-1 text-xl font-bold text-foreground">{totalStudents}</div>
           <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
             <Users className="w-3 h-3 text-slate-400" /> All Schools
           </div>
@@ -185,10 +186,10 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
         {/* 2. Eligible Students */}
         <div 
           onClick={() => setIsEligibilityModalOpen(true)}
-          className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-colors cursor-pointer"
+          className="bg-white p-3.5 rounded-2xl border border-border shadow-sm hover:border-primary/40 transition-colors cursor-pointer"
         >
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Eligible Students</div>
-          <div className="mt-1 text-xl font-bold text-slate-900">{eligibleStudents}</div>
+          <div className="mt-1 text-xl font-bold text-foreground">{eligibleStudents}</div>
           <div className="text-[10px] text-emerald-600 font-medium mt-1">
             {Math.round((eligibleStudents / (totalStudents || 1)) * 100)}% of cohort
           </div>
@@ -197,10 +198,10 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
         {/* 3. Active Jobs */}
         <div 
           onClick={() => onNavigate('jobs')}
-          className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-colors cursor-pointer"
+          className="bg-white p-3.5 rounded-2xl border border-border shadow-sm hover:border-primary/40 transition-colors cursor-pointer"
         >
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Active Jobs</div>
-          <div className="mt-1 text-xl font-bold text-slate-900">{activeJobs}</div>
+          <div className="mt-1 text-xl font-bold text-foreground">{activeJobs}</div>
           <div className="text-[10px] text-blue-600 font-medium mt-1">
             Open postings
           </div>
@@ -209,10 +210,10 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
         {/* 4. Applications */}
         <div 
           onClick={() => onNavigate('applications')}
-          className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-colors cursor-pointer"
+          className="bg-white p-3.5 rounded-2xl border border-border shadow-sm hover:border-primary/40 transition-colors cursor-pointer"
         >
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Applications</div>
-          <div className="mt-1 text-xl font-bold text-slate-900">{totalApplications}</div>
+          <div className="mt-1 text-xl font-bold text-foreground">{totalApplications}</div>
           <div className="text-[10px] text-slate-500 mt-1">
             Total candidate submissions
           </div>
@@ -221,10 +222,10 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
         {/* 5. Interviews */}
         <div 
           onClick={() => onNavigate('interviews')}
-          className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-colors cursor-pointer"
+          className="bg-white p-3.5 rounded-2xl border border-border shadow-sm hover:border-primary/40 transition-colors cursor-pointer"
         >
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Interviews</div>
-          <div className="mt-1 text-xl font-bold text-slate-900">{totalInterviews}</div>
+          <div className="mt-1 text-xl font-bold text-foreground">{totalInterviews}</div>
           <div className="text-[10px] text-purple-600 font-medium mt-1">
             Scheduled rounds
           </div>
@@ -233,10 +234,10 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
         {/* 6. Students Placed */}
         <div 
           onClick={() => onNavigate('applications')}
-          className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-colors cursor-pointer"
+          className="bg-white p-3.5 rounded-2xl border border-border shadow-sm hover:border-primary/40 transition-colors cursor-pointer"
         >
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Placed</div>
-          <div className="mt-1 text-xl font-bold text-slate-900">{studentsPlaced}</div>
+          <div className="mt-1 text-xl font-bold text-foreground">{studentsPlaced}</div>
           <div className="text-[10px] text-emerald-600 font-medium mt-1">
             Confirmed offers
           </div>
@@ -245,10 +246,10 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
         {/* 7. Overall Placement Rate */}
         <div 
           onClick={() => onNavigate('analytics')}
-          className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-colors cursor-pointer"
+          className="bg-white p-3.5 rounded-2xl border border-border shadow-sm hover:border-primary/40 transition-colors cursor-pointer"
         >
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Placement Rate</div>
-          <div className="mt-1 text-xl font-bold text-slate-900">{placementRate}%</div>
+          <div className="mt-1 text-xl font-bold text-foreground">{placementRate}%</div>
           <div className="text-[10px] text-emerald-600 font-medium mt-1 flex items-center gap-1">
             <TrendingUp className="w-2.5 h-2.5" /> Target ≥ 60%
           </div>
@@ -260,10 +261,10 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left 2 Cols: Placement Performance Trend */}
-        <div className="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">Placement Performance Trend</h3>
+              <h3 className="text-sm font-semibold text-foreground">Placement Performance Trend</h3>
               <p className="text-xs text-slate-400 mt-0.5">Progress toward the 60% institutional target</p>
             </div>
             <span className="text-xs px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
@@ -283,7 +284,7 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
 
               <polyline
                 fill="none"
-                stroke="#0f172a"
+                stroke="#1E50FF"
                 strokeWidth="2.5"
                 points={trendPoints.map((p, i) => `${(i / (trendPoints.length - 1)) * 480 + 10},${120 - (p.rate * 1.2)}`).join(' ')}
               />
@@ -293,7 +294,7 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
                 const y = 120 - (p.rate * 1.2);
                 return (
                   <g key={p.month}>
-                    <circle cx={x} cy={y} r="3.5" fill="#0f172a" />
+                    <circle cx={x} cy={y} r="3.5" fill="#1E50FF" />
                     <text x={x} y={y - 8} textAnchor="middle" fill="#475569" fontSize="10" fontWeight="bold">
                       {p.rate}%
                     </text>
@@ -303,7 +304,7 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
             </svg>
           </div>
 
-          <div className="flex justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-2 px-2">
+          <div className="flex justify-between text-[11px] text-slate-400 border-t border-border/70 pt-2 px-2">
             {trendPoints.map(p => (
               <span key={p.month}>{p.month}</span>
             ))}
@@ -311,25 +312,25 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
         </div>
 
         {/* Right 1 Col: Key Administrative Actions */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Administrative Actions</h3>
+            <h3 className="text-sm font-semibold text-foreground">Administrative Actions</h3>
             <p className="text-xs text-slate-400 mt-0.5">High-priority operational workflows</p>
           </div>
 
-          <div className="divide-y divide-slate-100 mt-3 text-xs">
+          <div className="divide-y divide-border/70 mt-3 text-xs">
             
             {/* Student Eligibility */}
             <div 
               onClick={() => setIsEligibilityModalOpen(true)}
-              className="py-3 flex items-center justify-between group hover:bg-slate-50 -mx-2 px-2 rounded-lg cursor-pointer transition-colors"
+              className="py-3 flex items-center justify-between group hover:bg-muted -mx-2 px-2 rounded-lg cursor-pointer transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-800 flex items-center justify-center font-bold">
                   <ShieldCheck className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-900">Student Eligibility Review</div>
+                  <div className="font-semibold text-foreground">Student Eligibility Review</div>
                   <div className="text-[11px] text-slate-400">{pendingEligibilityCount} students pending access</div>
                 </div>
               </div>
@@ -339,15 +340,15 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
             {/* Inactive Eligible Candidates */}
             <div 
               onClick={() => onNavigate('students')}
-              className="py-3 flex items-center justify-between group hover:bg-slate-50 -mx-2 px-2 rounded-lg cursor-pointer transition-colors"
+              className="py-3 flex items-center justify-between group hover:bg-muted -mx-2 px-2 rounded-lg cursor-pointer transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
                   <Users className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-900">Eligible But Inactive Students</div>
-                  <div className="text-[11px] text-slate-400">12 students have not applied yet</div>
+                  <div className="font-semibold text-foreground">Eligible But Inactive Students</div>
+                  <div className="text-[11px] text-slate-400">{students.filter(s => (s.eligibilityStatus === 'ELIGIBLE' || s.eligibilityStatus === 'ADMIN_OVERRIDE') && s.inactivityFlags?.hasNotApplied).length} students have not applied yet</div>
                 </div>
               </div>
               <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
@@ -356,15 +357,15 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
             {/* Interview Updates */}
             <div 
               onClick={() => onNavigate('interviews')}
-              className="py-3 flex items-center justify-between group hover:bg-slate-50 -mx-2 px-2 rounded-lg cursor-pointer transition-colors"
+              className="py-3 flex items-center justify-between group hover:bg-muted -mx-2 px-2 rounded-lg cursor-pointer transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
                   <Clock className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-900">Interview Outcomes Pending</div>
-                  <div className="text-[11px] text-slate-400">7 rounds awaiting final verdict</div>
+                  <div className="font-semibold text-foreground">Interview Outcomes Pending</div>
+                  <div className="text-[11px] text-slate-400">{applications.filter(a => a.status === 'INTERVIEW_SCHEDULED' || a.status === 'INTERVIEWED').length} rounds awaiting final verdict</div>
                 </div>
               </div>
               <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
@@ -373,15 +374,15 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
             {/* Rejection Feedback Required */}
             <div 
               onClick={() => onNavigate('applications')}
-              className="py-3 flex items-center justify-between group hover:bg-slate-50 -mx-2 px-2 rounded-lg cursor-pointer transition-colors"
+              className="py-3 flex items-center justify-between group hover:bg-muted -mx-2 px-2 rounded-lg cursor-pointer transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center">
                   <FileCheck className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-900">Rejection Feedback Tracking</div>
-                  <div className="text-[11px] text-slate-400">4 cases requiring skill gap logging</div>
+                  <div className="font-semibold text-foreground">Rejection Feedback Tracking</div>
+                  <div className="text-[11px] text-slate-400">{applications.filter(a => a.status === 'REJECTED' && !a.rejectionFeedback).length} cases requiring skill gap logging</div>
                 </div>
               </div>
               <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
@@ -389,10 +390,10 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
 
           </div>
 
-          <div className="pt-3 border-t border-slate-100">
+          <div className="pt-3 border-t border-border/70">
             <button
               onClick={() => onNavigate('reports')}
-              className="w-full py-1.5 text-center text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+              className="w-full py-1.5 text-center text-xs font-semibold text-slate-600 hover:text-foreground transition-colors"
             >
               View Full Academic Audit Report →
             </button>
@@ -403,25 +404,25 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
 
       {/* 4. Student Placement Eligibility Modal (Main Admin Testing Workflow) */}
       {isEligibilityModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/50 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl border border-border w-full max-w-2xl overflow-hidden max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
             
             {/* Modal Header */}
-            <div className="p-4 px-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="p-4 px-5 border-b border-border/70 flex items-center justify-between bg-muted/60">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-slate-900">Student Placement Eligibility</h3>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold border border-amber-200">
-                    Testing Phase Direct Control
+                  <h3 className="text-sm font-bold text-foreground">Student Placement Eligibility</h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold border border-amber-200">
+                    Admin override
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Main Admin can grant or revoke placement portal access directly.
+                  Grant or revoke portal access directly — every change is written to the audit log.
                 </p>
               </div>
               <button
                 onClick={() => setIsEligibilityModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-muted"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -436,7 +437,7 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
             )}
 
             {/* Search Bar */}
-            <div className="p-3 px-5 border-b border-slate-100">
+            <div className="p-3 px-5 border-b border-border/70">
               <div className="relative">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -444,13 +445,13 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
                   placeholder="Search students by name, reg #, or program..."
                   value={modalSearch}
                   onChange={e => setModalSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted border border-border rounded-lg text-foreground focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
                 />
               </div>
             </div>
 
             {/* Students List */}
-            <div className="flex-1 overflow-y-auto p-4 divide-y divide-slate-100 text-xs">
+            <div className="flex-1 overflow-y-auto p-4 divide-y divide-border/70 text-xs">
               {filteredModalStudents.map(student => {
                 const isEligible = student.eligibilityStatus === 'ELIGIBLE' || student.eligibilityStatus === 'ADMIN_OVERRIDE';
                 const isUpdating = updatingId === student.id;
@@ -459,7 +460,7 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
                   <div key={student.id} className="py-3 flex items-center justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-900">{student.fullName}</span>
+                        <span className="font-semibold text-foreground">{student.fullName}</span>
                         <span className="text-[11px] text-slate-400">({student.registrationNo})</span>
                         <EligibilityBadge status={student.eligibilityStatus} />
                       </div>
@@ -476,7 +477,7 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
                     <div className="shrink-0 flex items-center gap-2">
                       <button
                         onClick={() => setSelectedStudent(student)}
-                        className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-xs flex items-center gap-1.5 transition-colors"
+                        className="px-2.5 py-1.5 bg-muted hover:bg-secondary text-slate-700 rounded-lg font-medium text-xs flex items-center gap-1.5 transition-colors"
                         title="View Full Student Profile"
                       >
                         <UserIcon className="w-3.5 h-3.5 text-slate-500" />
@@ -496,7 +497,7 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
                         <button
                           disabled={isUpdating}
                           onClick={() => handleToggleStudentEligibility(student, true)}
-                          className="px-3 py-1.5 bg-slate-900 text-white hover:bg-slate-800 rounded-lg font-medium text-xs flex items-center gap-1.5 transition-colors shadow-2xs disabled:opacity-50"
+                          className="px-3 py-1.5 bg-primary text-white hover:bg-primary/90 rounded-lg font-medium text-xs flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
                         >
                           <Check className="w-3.5 h-3.5 text-emerald-400" />
                           <span>Approve for Placement</span>
@@ -509,11 +510,11 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="p-3 px-5 border-t border-slate-100 bg-slate-50 text-[11px] text-slate-500 flex items-center justify-between">
+            <div className="p-3 px-5 border-t border-border/70 bg-muted text-[11px] text-slate-500 flex items-center justify-between">
               <span>{filteredModalStudents.length} candidate profiles available</span>
               <button
                 onClick={() => setIsEligibilityModalOpen(false)}
-                className="px-3 py-1 bg-white border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 font-medium"
+                className="px-3 py-1 bg-white border border-border rounded-md text-slate-700 hover:bg-muted font-medium"
               >
                 Close
               </button>
@@ -525,19 +526,19 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
 
       {/* STUDENT PROFILE MODAL FOR ADMIN */}
       {selectedStudent && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-navy/40 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl border border-border w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 flex items-start justify-between">
+            <div className="p-5 border-b border-border/70 flex items-start justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-800 text-sm">
+                <div className="w-12 h-12 rounded-full bg-muted border border-border flex items-center justify-center font-bold text-slate-800 text-sm">
                   {selectedStudent.fullName.charAt(0)}
                 </div>
                 <div>
                   <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Student Profile Record</div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <h3 className="text-base font-bold text-slate-900">{selectedStudent.fullName}</h3>
+                    <h3 className="text-base font-bold text-foreground">{selectedStudent.fullName}</h3>
                     <EligibilityBadge status={selectedStudent.eligibilityStatus} />
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
@@ -555,7 +556,7 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
 
               <button
                 onClick={() => setSelectedStudent(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-muted transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -566,32 +567,32 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
               
               {/* Academic Performance Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="p-3 rounded-xl bg-muted border border-border/70">
                   <span className="text-[11px] text-slate-400 font-medium block">Attendance</span>
-                  <span className="text-lg font-bold text-slate-900 mt-0.5 block">{selectedStudent.academic.attendancePercentage}%</span>
+                  <span className="text-lg font-bold text-foreground mt-0.5 block">{selectedStudent.academic.attendancePercentage}%</span>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="p-3 rounded-xl bg-muted border border-border/70">
                   <span className="text-[11px] text-slate-400 font-medium block">Academic GPA</span>
-                  <span className="text-lg font-bold text-slate-900 mt-0.5 block">{selectedStudent.academic.scores.gpaOrPercentage}</span>
+                  <span className="text-lg font-bold text-foreground mt-0.5 block">{selectedStudent.academic.scores.gpaOrPercentage}</span>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="p-3 rounded-xl bg-muted border border-border/70">
                   <span className="text-[11px] text-slate-400 font-medium block">Assignments</span>
-                  <span className="text-lg font-bold text-slate-900 mt-0.5 block">
+                  <span className="text-lg font-bold text-foreground mt-0.5 block">
                     {selectedStudent.academic.scores.assignmentsCompleted}/{selectedStudent.academic.scores.totalAssignments}
                   </span>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="p-3 rounded-xl bg-muted border border-border/70">
                   <span className="text-[11px] text-slate-400 font-medium block">Capstone Score</span>
-                  <span className="text-lg font-bold text-slate-900 mt-0.5 block">{selectedStudent.academic.scores.capstoneScore || 88}%</span>
+                  <span className="text-lg font-bold text-foreground mt-0.5 block">{selectedStudent.academic.scores.capstoneScore || 88}%</span>
                 </div>
               </div>
 
               {/* Skills */}
               <div>
-                <h4 className="font-semibold text-slate-900 mb-2">Verified Technical Skills</h4>
+                <h4 className="font-semibold text-foreground mb-2">Verified Technical Skills</h4>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedStudent.skills.map(skill => (
-                    <span key={skill} className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 text-xs font-medium">
+                    <span key={skill} className="px-2.5 py-1 rounded-md bg-muted text-slate-800 text-xs font-medium">
                       {skill}
                     </span>
                   ))}
@@ -601,12 +602,12 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
               {/* Projects */}
               {selectedStudent.academic.projects && selectedStudent.academic.projects.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-slate-900 mb-2">Academic Projects</h4>
+                  <h4 className="font-semibold text-foreground mb-2">Academic Projects</h4>
                   <div className="space-y-2">
                     {selectedStudent.academic.projects.map(proj => (
-                      <div key={proj.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div key={proj.id} className="p-3 rounded-xl bg-muted border border-border/70">
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-slate-900">{proj.title}</span>
+                          <span className="font-semibold text-foreground">{proj.title}</span>
                           <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
                             {proj.status}
                           </span>
@@ -619,8 +620,8 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
               )}
 
               {/* External Links */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
-                <h4 className="font-semibold text-slate-900">Portfolio & External Profiles</h4>
+              <div className="p-4 rounded-xl bg-muted border border-border/70 space-y-2">
+                <h4 className="font-semibold text-foreground">Portfolio & External Profiles</h4>
                 <div className="flex flex-wrap gap-4 text-xs">
                   {selectedStudent.resumeUrl ? (
                     <a href={selectedStudent.resumeUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
@@ -643,11 +644,11 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 px-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+            <div className="p-4 px-5 border-t border-border/70 bg-muted flex items-center justify-between">
               <span className="text-xs text-slate-500">Main Admin Placement Evaluation</span>
               <button
                 onClick={() => setSelectedStudent(null)}
-                className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 transition-colors"
+                className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
               >
                 Close Profile
               </button>

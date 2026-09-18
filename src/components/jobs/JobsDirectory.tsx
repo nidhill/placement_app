@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { JobListing, JobMatchResult, StudentProfile, JobSourceChannel } from '../../types.ts';
 import { api } from '../../lib/api.ts';
+import { plainText } from '../../lib/text.ts';
 import { SourceChannelBadge, MatchVerdictBadge } from '../common/StatusBadge.tsx';
 import { 
   Search, 
@@ -108,6 +109,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
   const [newCompany, setNewCompany] = useState('');
   const [newLocation, setNewLocation] = useState('');
   const [newSalary, setNewSalary] = useState('');
+  const [newApplyUrl, setNewApplyUrl] = useState('');
   const [newSkills, setNewSkills] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newChannel, setNewChannel] = useState<JobSourceChannel>('PLACEMENT_DIRECT');
@@ -219,7 +221,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
 
   const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newCompany.trim() || !newJobRole) return;
+    if (!newTitle.trim() || !newCompany.trim() || !newJobRole || !/^https?:\/\/\S+$/i.test(newApplyUrl.trim())) return;
     setSubmitting(true);
     try {
       const skillsArray = newSkills.split(',').map(s => s.trim()).filter(Boolean);
@@ -242,6 +244,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
         eligibleSchools: ['School of Tech'],
         eligiblePrograms: ['Full Stack Web Development'],
         sourceChannel: newChannel,
+        applicationUrl: newApplyUrl.trim(),
         normalizedDesignation: newJobRole,
         status: 'ACTIVE',
         deadline: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString()
@@ -251,6 +254,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
       setNewCompany('');
       setNewLocation('');
       setNewSalary('');
+      setNewApplyUrl('');
       setNewSkills('');
       setNewDescription('');
       setNewJobRole('');
@@ -346,7 +350,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Job Opportunities</h2>
+            <h2 className="text-xl font-semibold text-foreground tracking-tight">Job Opportunities</h2>
             <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200 flex items-center gap-1">
               <span>🇮🇳</span> India Only
             </span>
@@ -362,7 +366,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
         <div className="flex flex-wrap items-center gap-2">
           {/* Automated Daily Sync Status Badge */}
           <div 
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
+            className="px-3 py-1.5 bg-muted border border-border text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm"
             title="Technology jobs are automatically ingested from Apify & Public ATS daily at 2:00 AM"
           >
             <Clock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
@@ -372,7 +376,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
           {/* Post Job Button */}
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-1.5 bg-white border border-border text-slate-700 rounded-lg text-xs font-semibold hover:bg-muted transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Post Job</span>
@@ -412,7 +416,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2 border-t border-emerald-200/60 text-[11px]">
               <div className="p-2 bg-white/70 rounded-lg border border-emerald-100">
                 <span className="text-slate-500 block">Total scraped:</span>
-                <strong className="text-slate-900 text-xs">{fetchNotice.stats.received}</strong>
+                <strong className="text-foreground text-xs">{fetchNotice.stats.received}</strong>
               </div>
               <div className="p-2 bg-white/70 rounded-lg border border-emerald-100">
                 <span className="text-slate-500 block">Tech jobs:</span>
@@ -444,7 +448,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
       )}
 
       {/* Filter Bar */}
-      <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex flex-wrap items-center gap-2.5 text-xs">
+      <div className="bg-white p-3.5 rounded-2xl border border-border shadow-sm flex flex-wrap items-center gap-2.5 text-xs">
         
         {/* Search */}
         <div className="relative min-w-[180px] flex-1">
@@ -454,7 +458,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
             placeholder="Search title, company..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 text-slate-800"
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-slate-800"
           />
         </div>
 
@@ -463,7 +467,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
           <select
             value={sourceFilter}
             onChange={e => setSourceFilter(e.target.value)}
-            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+            className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
           >
             <option value="ALL">Source: All Sources</option>
             <option value="PLACEMENT_DIRECT">Placement Team Direct</option>
@@ -483,7 +487,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
           <select
             value={categoryFilter}
             onChange={e => setCategoryFilter(e.target.value)}
-            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer font-medium"
+            className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer font-medium"
           >
             <option value="ALL">Category: All Tech</option>
             <option value="Software Development">Software Development</option>
@@ -513,7 +517,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
             placeholder="Role / Designation..."
             value={designationFilter}
             onChange={e => setDesignationFilter(e.target.value)}
-            className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 text-slate-800"
+            className="w-full px-3 py-1.5 text-xs bg-muted border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-slate-800"
           />
         </div>
 
@@ -525,7 +529,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
             placeholder="Filter location..."
             value={locationFilter}
             onChange={e => setLocationFilter(e.target.value)}
-            className="w-full pl-7 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 text-slate-800"
+            className="w-full pl-7 pr-3 py-1.5 text-xs bg-muted border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-slate-800"
           />
         </div>
 
@@ -534,7 +538,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
-            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+            className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
           >
             <option value="ALL">Type: All</option>
             <option value="FULL_TIME">Full-Time</option>
@@ -552,7 +556,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
             placeholder="Skill (e.g. React)..."
             value={skillFilter}
             onChange={e => setSkillFilter(e.target.value)}
-            className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 text-slate-800"
+            className="w-full px-3 py-1.5 text-xs bg-muted border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-slate-800"
           />
         </div>
 
@@ -561,7 +565,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
           <select
             value={experienceFilter}
             onChange={e => setExperienceFilter(e.target.value)}
-            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+            className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
           >
             <option value="ALL">Experience: All</option>
             <option value="ENTRY">Entry / Fresh</option>
@@ -590,10 +594,10 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
       </div>
 
       {/* Jobs Table */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/70 border-b border-slate-200/80 text-slate-500 font-medium">
+            <thead className="bg-muted/60 border-b border-border text-slate-500 font-medium">
               <tr>
                 <th className="py-3 px-4">Opportunity</th>
                 <th className="py-3 px-4">Location & Type</th>
@@ -603,7 +607,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border/70">
               {loading ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400 text-xs">
@@ -621,16 +625,16 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                   <tr 
                     key={job.id} 
                     onClick={() => handleSelectJob(job)}
-                    className="hover:bg-slate-50/60 transition-colors cursor-pointer group"
+                    className="hover:bg-muted/60 transition-colors cursor-pointer group"
                   >
                     {/* Job Title & Company */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center font-bold text-slate-700 text-xs shrink-0">
                           {job.company.charAt(0)}
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors flex items-center gap-1.5 flex-wrap">
+                          <div className="font-semibold text-foreground group-hover:text-blue-600 transition-colors flex items-center gap-1.5 flex-wrap">
                             <span>{job.title}</span>
                             {job.category && (
                               <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-100">
@@ -668,7 +672,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                     <td className="py-3.5 px-4">
                       <div className="flex flex-wrap gap-1 max-w-xs">
                         {job.requiredSkills.slice(0, 3).map(sk => (
-                          <span key={sk} className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-medium">
+                          <span key={sk} className="px-2 py-0.5 rounded bg-muted text-slate-700 text-[10px] font-medium">
                             {sk}
                           </span>
                         ))}
@@ -718,7 +722,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                             e.stopPropagation();
                             handleSelectJob(job);
                           }}
-                          className="px-2.5 py-1 text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded text-xs font-semibold transition-colors cursor-pointer"
+                          className="px-2.5 py-1 text-slate-700 hover:text-blue-600 hover:bg-muted rounded text-xs font-semibold transition-colors cursor-pointer"
                         >
                           Details
                         </button>
@@ -746,14 +750,14 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
 
       {/* Selected Job Drawer / Modal */}
       {selectedJob && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-2xl w-full border border-slate-200 shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-navy/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-2xl w-full border border-border shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
             
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 flex items-start justify-between">
+            <div className="p-5 border-b border-border/70 flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-slate-900 text-base">{selectedJob.title}</h3>
+                  <h3 className="font-bold text-foreground text-base">{selectedJob.title}</h3>
                   <SourceChannelBadge channel={selectedJob.sourceChannel} />
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
@@ -764,19 +768,19 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
               </div>
               <button
                 onClick={() => setSelectedJob(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-muted"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Tabs */}
-            <div className="flex border-b border-slate-100 px-5 text-xs font-medium">
+            <div className="flex border-b border-border/70 px-5 text-xs font-medium">
               <button
                 onClick={() => setActiveTab('details')}
                 className={`py-2.5 border-b-2 font-semibold transition-colors mr-4 ${
                   activeTab === 'details'
-                    ? 'border-slate-900 text-slate-900'
+                    ? 'border-slate-900 text-foreground'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -786,7 +790,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                 onClick={() => setActiveTab('matching')}
                 className={`py-2.5 border-b-2 font-semibold transition-colors flex items-center gap-1.5 ${
                   activeTab === 'matching'
-                    ? 'border-slate-900 text-slate-900'
+                    ? 'border-slate-900 text-foreground'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -802,17 +806,17 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                 <>
                   {/* Compensation & Type */}
                   <div className="grid grid-cols-3 gap-3">
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="p-3 bg-muted rounded-lg border border-border/70">
                       <span className="text-[11px] text-slate-400 block">Compensation</span>
-                      <span className="text-xs font-bold text-slate-900 mt-0.5 block">{selectedJob.salaryRange}</span>
+                      <span className="text-xs font-bold text-foreground mt-0.5 block">{selectedJob.salaryRange}</span>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="p-3 bg-muted rounded-lg border border-border/70">
                       <span className="text-[11px] text-slate-400 block">Experience</span>
-                      <span className="text-xs font-bold text-slate-900 mt-0.5 block">{selectedJob.experienceRequirement}</span>
+                      <span className="text-xs font-bold text-foreground mt-0.5 block">{selectedJob.experienceRequirement}</span>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="p-3 bg-muted rounded-lg border border-border/70">
                       <span className="text-[11px] text-slate-400 block">Deadline</span>
-                      <span className="text-xs font-bold text-slate-900 mt-0.5 block">
+                      <span className="text-xs font-bold text-foreground mt-0.5 block">
                         {new Date(selectedJob.deadline).toLocaleDateString()}
                       </span>
                     </div>
@@ -825,7 +829,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
                       {selectedJob.requiredSkills.map(sk => (
-                        <span key={sk} className="px-2.5 py-1 rounded bg-slate-100 text-slate-800 text-xs font-medium">
+                        <span key={sk} className="px-2.5 py-1 rounded bg-muted text-slate-800 text-xs font-medium">
                           {sk}
                         </span>
                       ))}
@@ -840,7 +844,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                       </h4>
                       <div className="flex flex-wrap gap-1.5">
                         {selectedJob.preferredSkills.map(sk => (
-                          <span key={sk} className="px-2.5 py-1 rounded bg-slate-50 border border-slate-200 text-slate-700 text-xs">
+                          <span key={sk} className="px-2.5 py-1 rounded bg-muted border border-border text-slate-700 text-xs">
                             {sk}
                           </span>
                         ))}
@@ -854,7 +858,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                       About the Role
                     </h4>
                     <p className="text-slate-600 leading-relaxed whitespace-pre-line text-xs">
-                      {selectedJob.description}
+                      {plainText(selectedJob.description)}
                     </p>
                   </div>
                 </>
@@ -876,43 +880,43 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                   ) : (
                     <div className="space-y-2.5">
                       {matchingCandidates.map((m: any, idx: number) => (
-                        <div key={idx} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+                        <div key={idx} className="p-3.5 rounded-xl border border-border bg-muted/60 space-y-2">
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                              <span className="font-bold text-foreground text-xs sm:text-sm">
                                 {m.student?.fullName || m.studentName || 'Candidate'}
                               </span>
-                              <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-muted text-slate-700 font-medium">
                                 {m.student?.designation || 'Designation not available'}
                               </span>
                               <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                                 m.matchScore >= 80 ? 'bg-emerald-100 text-emerald-800' :
                                 m.matchScore >= 65 ? 'bg-blue-100 text-blue-800' :
-                                m.matchScore >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+                                m.matchScore >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-muted text-slate-700'
                               }`}>
                                 {m.matchLevel || `${m.matchScore}% Match`}
                               </span>
                             </div>
 
-                            <span className="text-sm font-black text-slate-900 shrink-0">
+                            <span className="text-sm font-black text-foreground shrink-0">
                               {m.matchScore}%
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] pt-1 border-t border-slate-100">
-                            <div className="p-1.5 bg-white rounded border border-slate-100">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] pt-1 border-t border-border/70">
+                            <div className="p-1.5 bg-white rounded border border-border/70">
                               <span className="text-slate-400 block text-[9px] uppercase font-semibold">Role ({m.designationScore || 0}/40)</span>
                               <span className="font-medium text-slate-800 truncate block">{m.designationExplanation || 'Compatible'}</span>
                             </div>
-                            <div className="p-1.5 bg-white rounded border border-slate-100">
+                            <div className="p-1.5 bg-white rounded border border-border/70">
                               <span className="text-slate-400 block text-[9px] uppercase font-semibold">Skills ({m.skillsScore || 0}/35)</span>
                               <span className="font-medium text-emerald-700 truncate block">✓ {(m.matchedSkills || []).slice(0, 2).join(', ') || 'Aligned'}</span>
                             </div>
-                            <div className="p-1.5 bg-white rounded border border-slate-100">
+                            <div className="p-1.5 bg-white rounded border border-border/70">
                               <span className="text-slate-400 block text-[9px] uppercase font-semibold">Program ({m.programScore || 0}/15)</span>
                               <span className="font-medium text-slate-800 truncate block">{m.programExplanation || m.student?.program || 'Verified'}</span>
                             </div>
-                            <div className="p-1.5 bg-white rounded border border-slate-100">
+                            <div className="p-1.5 bg-white rounded border border-border/70">
                               <span className="text-slate-400 block text-[9px] uppercase font-semibold">Experience ({m.experienceScore || 0}/10)</span>
                               <span className="font-medium text-slate-800 truncate block">{m.experienceExplanation || 'Compatible'}</span>
                             </div>
@@ -927,7 +931,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 px-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs">
+            <div className="p-4 px-5 border-t border-border/70 bg-muted/60 flex items-center justify-between text-xs">
               <div className="flex items-center gap-3">
                 <span className="text-slate-500">
                   Source: <strong className="text-slate-800">
@@ -960,7 +964,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                     href={selectedJob.applicationUrl || selectedJob.externalUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 border border-blue-700 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-2xs cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 border border-blue-700 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm cursor-pointer"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>Go to OG Job Portal ↗</span>
@@ -969,7 +973,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
 
                 <button
                   onClick={() => setSelectedJob(null)}
-                  className="px-4 py-1.5 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="px-4 py-1.5 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors cursor-pointer"
                 >
                   Close
                 </button>
@@ -982,10 +986,10 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
 
       {/* Manual Job Posting Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-xl overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 text-sm">Post New Job Opportunity</h3>
+        <div className="fixed inset-0 bg-navy/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-lg w-full border border-border shadow-xl overflow-hidden">
+            <div className="p-5 border-b border-border/70 flex items-center justify-between">
+              <h3 className="font-bold text-foreground text-sm">Post New Job Opportunity</h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600"
@@ -1003,7 +1007,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                   value={newTitle}
                   onChange={e => setNewTitle(e.target.value)}
                   placeholder="e.g. Junior Frontend Engineer"
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                  className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-xs"
                 />
               </div>
 
@@ -1015,14 +1019,14 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                   value={newCompany}
                   onChange={e => setNewCompany(e.target.value)}
                   placeholder="e.g. NetSol Technologies"
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                  className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-xs"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 font-medium mb-1">Country</label>
-                  <div className="w-full px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-700 font-medium flex items-center gap-1.5">
+                  <div className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-xs text-slate-700 font-medium flex items-center gap-1.5">
                     <span>🇮🇳</span>
                     <span>India (Market Default)</span>
                   </div>
@@ -1035,7 +1039,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                     value={newLocation}
                     onChange={e => setNewLocation(e.target.value)}
                     placeholder="e.g. Kochi, Kerala / Bangalore / Remote - India"
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                    className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-xs"
                   />
                 </div>
               </div>
@@ -1047,7 +1051,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                   value={newSalary}
                   onChange={e => setNewSalary(e.target.value)}
                   placeholder="e.g. ₹6,00,000 - ₹10,00,000 / annum"
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                  className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-xs"
                 />
               </div>
 
@@ -1058,7 +1062,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                   value={newSkills}
                   onChange={e => setNewSkills(e.target.value)}
                   placeholder="React, TypeScript, Node.js"
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                  className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-xs"
                 />
               </div>
 
@@ -1067,7 +1071,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                 <select
                   value={newChannel}
                   onChange={e => setNewChannel(e.target.value as JobSourceChannel)}
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs cursor-pointer"
+                  className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-xs cursor-pointer"
                 >
                   <option value="PLACEMENT_DIRECT">Placement Team Direct</option>
                   <option value="STAFF_REFERRAL">Staff Referral</option>
@@ -1079,12 +1083,25 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
               </div>
 
               <div>
+                <label className="block text-slate-700 font-medium mb-1">Application link *</label>
+                <input
+                  type="url"
+                  required
+                  value={newApplyUrl}
+                  onChange={e => setNewApplyUrl(e.target.value)}
+                  placeholder="https://company.com/careers/… or the LinkedIn / Naukri posting"
+                  className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Students are sent here when they press Apply.</p>
+              </div>
+
+              <div>
                 <label className="block text-slate-700 font-medium mb-1">Job Role *</label>
                 <select
                   required
                   value={newJobRole}
                   onChange={e => setNewJobRole(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs cursor-pointer"
+                  className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-xs cursor-pointer"
                 >
                   <option value="" disabled>Select Job Role...</option>
                   {JOB_ROLE_OPTIONS.map(role => (
@@ -1100,22 +1117,22 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                   value={newDescription}
                   onChange={e => setNewDescription(e.target.value)}
                   placeholder="Job duties, requirements, expectations..."
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                  className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-xs"
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-border/70 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  className="px-3 py-1.5 rounded-lg border border-border text-slate-600 hover:bg-muted"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-1.5 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-50"
                 >
                   {submitting ? 'Saving...' : 'Post Job'}
                 </button>
@@ -1127,10 +1144,10 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmJob && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-2xl max-w-sm w-full border border-slate-200 shadow-xl overflow-hidden">
-            <div className="p-5 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+        <div className="fixed inset-0 bg-navy/50 backdrop-blur-xs flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-2xl max-w-sm w-full border border-border shadow-xl overflow-hidden">
+            <div className="p-5 border-b border-border/70">
+              <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
                 <Trash2 className="w-4 h-4 text-rose-500" />
                 Delete this job post?
               </h3>
@@ -1141,8 +1158,8 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                 Are you sure you want to delete:
               </p>
 
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <div className="font-bold text-slate-900">{deleteConfirmJob.title}</div>
+              <div className="p-3 bg-muted rounded-lg border border-border/70">
+                <div className="font-bold text-foreground">{deleteConfirmJob.title}</div>
                 <div className="text-slate-500 mt-0.5">{deleteConfirmJob.company}</div>
                 {deleteConfirmJob.normalizedDesignation && (
                   <div className="text-slate-500 mt-0.5">Role: {deleteConfirmJob.normalizedDesignation}</div>
@@ -1154,11 +1171,11 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
               </p>
             </div>
 
-            <div className="p-4 px-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-2 text-xs">
+            <div className="p-4 px-5 border-t border-border/70 bg-muted/60 flex items-center justify-end gap-2 text-xs">
               <button
                 onClick={() => setDeleteConfirmJob(null)}
                 disabled={deleting}
-                className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
+                className="px-3.5 py-1.5 rounded-lg border border-border text-slate-600 hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>

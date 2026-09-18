@@ -88,7 +88,7 @@ export const InterviewsSchedule: React.FC<InterviewsScheduleProps> = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Interview Schedule</h2>
+          <h2 className="text-xl font-semibold text-foreground tracking-tight">Interview Schedule</h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Active recruiter evaluations, technical assessments, and interview rounds
           </p>
@@ -101,16 +101,16 @@ export const InterviewsSchedule: React.FC<InterviewsScheduleProps> = () => {
             placeholder="Search interviews..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 text-slate-800"
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-slate-800"
           />
         </div>
       </div>
 
       {/* Grid of interview cards or list */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/70 border-b border-slate-200/80 text-slate-500 font-medium">
+            <thead className="bg-muted/60 border-b border-border text-slate-500 font-medium">
               <tr>
                 <th className="py-3 px-4">Student</th>
                 <th className="py-3 px-4">Employer & Role</th>
@@ -119,7 +119,7 @@ export const InterviewsSchedule: React.FC<InterviewsScheduleProps> = () => {
                 <th className="py-3 px-4 text-right">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border/70">
               {filteredInterviews.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-slate-400 text-xs">
@@ -128,14 +128,14 @@ export const InterviewsSchedule: React.FC<InterviewsScheduleProps> = () => {
                 </tr>
               ) : (
                 filteredInterviews.map((iv, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={idx} className="hover:bg-muted/60 transition-colors">
                     <td className="py-3.5 px-4">
-                      <div className="font-semibold text-slate-900">{iv.studentName}</div>
+                      <div className="font-semibold text-foreground">{iv.studentName}</div>
                       <div className="text-[11px] text-slate-400">{iv.program} · {iv.batch}</div>
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <div className="text-slate-900 font-medium">{iv.jobTitle}</div>
+                      <div className="text-foreground font-medium">{iv.jobTitle}</div>
                       <div className="text-[11px] text-slate-500">{iv.company}</div>
                     </td>
 

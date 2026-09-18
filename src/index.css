@@ -1,1 +1,61 @@
 @import "tailwindcss";
+
+/* Same white & blue system as the LMS (lms/src/index.css): near-white canvas,
+   white cards, brand blue as primary, sky as accent, coral for alerts.
+   Tailwind v4 reads these as utilities: bg-primary, text-muted-foreground… */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+
+  --color-background: #F4F6FC;
+  --color-foreground: #171B2B;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #171B2B;
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #171B2B;
+  --color-primary: #1E50FF;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #EAF0FB;
+  --color-secondary-foreground: #2E3A5C;
+  --color-muted: #EEF1FA;
+  --color-muted-foreground: #6A7081;
+  --color-accent: #63C8FC;
+  --color-accent-foreground: #16203A;
+  --color-coral: #F5715C;
+  --color-coral-foreground: #FFFFFF;
+  --color-navy: #141A2E;
+  --color-navy-foreground: #FFFFFF;
+  --color-sun: #F7CF3A;
+  --color-sun-foreground: #141A2E;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FAFAFA;
+  --color-border: #E1E6F3;
+  --color-input: #E1E6F3;
+  --color-ring: #1E50FF;
+
+  --radius-lg: 1.25rem;
+  --radius-md: 1.125rem;
+  --radius-sm: 1rem;
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html { color-scheme: light; }
+  body {
+    margin: 0;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 { font-weight: 700; letter-spacing: -0.02em; }
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cfd6ea; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #aab5d6; }
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.animate-fade-up { animation: fade-up 0.35s ease both; }
+.animate-fade-in { animation: fade-in 0.25s ease both; }

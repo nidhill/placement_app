@@ -207,14 +207,14 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
     <div className="space-y-6">
       
       {/* Header */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+      <div className="bg-white rounded-2xl p-6 border border-border shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-teal-50 text-teal-800 text-xs font-semibold border border-teal-200 mb-1.5">
               <Briefcase className="w-3.5 h-3.5 text-teal-600" />
               Career Operations Suite
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Placement Team Dashboard</h1>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Placement Team Dashboard</h1>
             <p className="text-slate-600 text-sm max-w-2xl mt-0.5">
               Source and tag jobs by channel, audit eligible candidate pools, match students using rule-based criteria, and track recruitment funnels.
             </p>
@@ -223,7 +223,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => setShowCreateJob(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm"
             >
               <Plus className="w-4 h-4" /> Post New Job Lead
             </button>
@@ -232,28 +232,28 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
       </div>
 
       {/* Main Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto text-sm">
+      <div className="flex items-center gap-2 border-b border-border pb-2 overflow-x-auto text-sm">
         <button
           onClick={() => setActiveTab('candidates')}
-          className={`px-3.5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'candidates' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          className={`px-3.5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'candidates' ? 'bg-primary text-white' : 'text-slate-600 hover:bg-muted'}`}
         >
           <Users className="w-4 h-4" /> Eligible Candidate Pool ({eligibleCandidates.length})
         </button>
         <button
           onClick={() => setActiveTab('jobs')}
-          className={`px-3.5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'jobs' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          className={`px-3.5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'jobs' ? 'bg-primary text-white' : 'text-slate-600 hover:bg-muted'}`}
         >
           <Briefcase className="w-4 h-4" /> Job Leads & Channels ({jobs.length})
         </button>
         <button
           onClick={() => setActiveTab('applications')}
-          className={`px-3.5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'applications' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          className={`px-3.5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'applications' ? 'bg-primary text-white' : 'text-slate-600 hover:bg-muted'}`}
         >
           <BarChart3 className="w-4 h-4" /> Pipeline & Interviews ({applications.length})
         </button>
         <button
           onClick={() => setActiveTab('rejections')}
-          className={`px-3.5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'rejections' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          className={`px-3.5 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'rejections' ? 'bg-primary text-white' : 'text-slate-600 hover:bg-muted'}`}
         >
           <MessageSquare className="w-4 h-4" /> Rejection Feedback & Remedial ({rejections.length})
         </button>
@@ -264,7 +264,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
         <div className="space-y-4">
           
           {/* Multi-Tier Filter Bar: School -> Program -> Batch */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
+          <div className="bg-white p-4 rounded-2xl border border-border shadow-sm space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
               <Filter className="w-3.5 h-3.5 text-teal-600" />
               Multi-Tier Candidate Hierarchy Filters
@@ -331,7 +331,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
 
               {/* Inactivity Audit Toggle */}
               <div className="flex items-end">
-                <label className="w-full flex items-center gap-2 p-2 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100 text-xs">
+                <label className="w-full flex items-center gap-2 p-2 border border-border rounded-lg bg-muted cursor-pointer hover:bg-muted text-xs">
                   <input
                     type="checkbox"
                     checked={inactivityOnly}
@@ -347,8 +347,8 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
           </div>
 
           {/* Candidate Table */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
+          <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-border bg-muted flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-800">
                 Showing {filteredCandidates.length} Active Eligible Candidates
               </span>
@@ -357,7 +357,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-100 text-slate-600 uppercase text-[10px] tracking-wider border-b border-slate-200">
+                <thead className="bg-muted text-slate-600 uppercase text-[10px] tracking-wider border-b border-border">
                   <tr>
                     <th className="px-4 py-3">Candidate</th>
                     <th className="px-4 py-3">School & Program</th>
@@ -367,7 +367,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                     <th className="px-4 py-3 text-right">Placement Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-border">
                   {filteredCandidates.map(st => {
                     const studentApps = applications.filter(a => a.studentId === st.id);
                     const isPlaced = studentApps.some(a => a.status === 'SELECTED' || a.status === 'JOINED' || a.status === 'OFFER_RECEIVED');
@@ -375,21 +375,21 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                     const hasNeverApplied = studentApps.length === 0;
 
                     return (
-                      <tr key={st.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={st.id} className="hover:bg-muted transition-colors">
                         <td className="px-4 py-3">
-                          <div className="font-bold text-slate-900">{st.fullName}</div>
+                          <div className="font-bold text-foreground">{st.fullName}</div>
                           <div className="text-[11px] text-slate-500 font-mono">{st.registrationNo}</div>
                           <div className="text-[10px] text-slate-400">{st.email}</div>
                         </td>
 
                         <td className="px-4 py-3">
-                          <div className="font-medium text-slate-900">{st.school}</div>
+                          <div className="font-medium text-foreground">{st.school}</div>
                           <div className="text-[11px] text-slate-600">{st.program}</div>
                           <div className="text-[10px] text-teal-700 font-medium">Batch: {st.batch}</div>
                         </td>
 
                         <td className="px-4 py-3">
-                          <div className="font-semibold text-slate-900">Score: {st.academic.scores.gpaOrPercentage}%</div>
+                          <div className="font-semibold text-foreground">Score: {st.academic.scores.gpaOrPercentage}%</div>
                           <div className={`text-[11px] ${st.academic.attendancePercentage < 85 ? 'text-rose-600 font-semibold' : 'text-slate-600'}`}>
                             Attendance: {st.academic.attendancePercentage}%
                           </div>
@@ -398,12 +398,12 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1 max-w-xs">
                             {st.academic.skills.slice(0, 4).map(sk => (
-                              <span key={sk} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                              <span key={sk} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-slate-700">
                                 {sk}
                               </span>
                             ))}
                             {st.academic.skills.length > 4 && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-slate-500">
                                 +{st.academic.skills.length - 4} more
                               </span>
                             )}
@@ -451,34 +451,34 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Channel metric quick cards */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+            <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-teal-800">Placement Team Direct</span>
                 <span className="text-xs px-2 py-0.5 rounded bg-teal-50 text-teal-700 font-bold">Highest Conversion</span>
               </div>
-              <div className="text-2xl font-bold text-slate-900 mt-2">
+              <div className="text-2xl font-bold text-foreground mt-2">
                 {jobs.filter(j => j.sourceChannel === 'PLACEMENT_DIRECT').length} Opportunities
               </div>
               <p className="text-[11px] text-slate-500 mt-1">Direct corporate partnerships and recruiter outreach</p>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+            <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-sky-800">Staff Referrals</span>
                 <span className="text-xs px-2 py-0.5 rounded bg-sky-50 text-sky-700 font-bold">High Intent</span>
               </div>
-              <div className="text-2xl font-bold text-slate-900 mt-2">
+              <div className="text-2xl font-bold text-foreground mt-2">
                 {jobs.filter(j => j.sourceChannel === 'STAFF_REFERRAL').length} Opportunities
               </div>
               <p className="text-[11px] text-slate-500 mt-1">Leads provided by internal instructors (Haris, Rizwan)</p>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+            <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-purple-800">AI Job Scraper Agent</span>
                 <span className="text-xs px-2 py-0.5 rounded bg-purple-50 text-purple-700 font-bold">Apify Automated</span>
               </div>
-              <div className="text-2xl font-bold text-slate-900 mt-2">
+              <div className="text-2xl font-bold text-foreground mt-2">
                 {jobs.filter(j => j.sourceChannel === 'AI_JOB_SCRAPER').length} Opportunities
               </div>
               <p className="text-[11px] text-slate-500 mt-1">Scraped leads from LinkedIn, Rozee.pk, and Indeed</p>
@@ -486,18 +486,18 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
           </div>
 
           {/* Job Listings Table */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-900">Active Job Directory</span>
+          <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-border bg-muted flex items-center justify-between text-xs">
+              <span className="font-bold text-foreground">Active Job Directory</span>
               <span className="text-slate-500">{jobs.length} Opportunities Tracked</span>
             </div>
 
-            <div className="divide-y divide-slate-200">
+            <div className="divide-y divide-border">
               {jobs.map(job => (
-                <div key={job.id} className="p-4 hover:bg-slate-50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div key={job.id} className="p-4 hover:bg-muted transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900 text-sm">{job.title}</span>
+                      <span className="font-bold text-foreground text-sm">{job.title}</span>
                       <span className="text-xs text-slate-500 font-medium">@ {job.company}</span>
                       <span className="text-[11px] text-slate-400 font-mono">({job.jobCode})</span>
                     </div>
@@ -519,7 +519,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                       )}
                       <span className="text-slate-300">|</span>
                       {job.requiredSkills.map(sk => (
-                        <span key={sk} className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                        <span key={sk} className="text-[10px] px-2 py-0.5 rounded bg-muted text-slate-700">
                           {sk}
                         </span>
                       ))}
@@ -529,7 +529,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                   <div className="flex items-center gap-2 self-end sm:self-center">
                     <button
                       onClick={() => handleOpenMatching(job)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Match Candidates
                     </button>
@@ -538,7 +538,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                         href={job.externalUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+                        className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-muted"
                         title="View external link"
                       >
                         <ExternalLink className="w-4 h-4" />
@@ -554,15 +554,15 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
 
       {/* 3. PIPELINE & INTERVIEWS */}
       {activeTab === 'applications' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
-            <span className="font-bold text-slate-900">Live Application Tracking Pipeline</span>
+        <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-border bg-muted flex items-center justify-between text-xs">
+            <span className="font-bold text-foreground">Live Application Tracking Pipeline</span>
             <span className="text-slate-500">{applications.length} Submissions Across Cohorts</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-100 text-slate-600 uppercase text-[10px] tracking-wider border-b border-slate-200">
+              <thead className="bg-muted text-slate-600 uppercase text-[10px] tracking-wider border-b border-border">
                 <tr>
                   <th className="px-4 py-3">Applicant</th>
                   <th className="px-4 py-3">Opportunity</th>
@@ -572,16 +572,16 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-border">
                 {applications.map(app => (
-                  <tr key={app.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={app.id} className="hover:bg-muted transition-colors">
                     <td className="px-4 py-3">
-                      <div className="font-bold text-slate-900">{app.studentName}</div>
+                      <div className="font-bold text-foreground">{app.studentName}</div>
                       <div className="text-[11px] text-slate-500">{app.school} • {app.batch}</div>
                     </td>
 
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-slate-900">{app.jobTitle}</div>
+                      <div className="font-semibold text-foreground">{app.jobTitle}</div>
                       <div className="text-[11px] text-slate-500">{app.company}</div>
                     </td>
 
@@ -640,20 +640,20 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
 
       {/* 4. REJECTION FEEDBACK & REMEDIAL PLANNING */}
       {activeTab === 'rejections' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden space-y-4 p-5">
+        <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden space-y-4 p-5">
           <div>
-            <h3 className="font-bold text-slate-900 text-base">Mandatory Rejection Feedback & Remedial Planning</h3>
+            <h3 className="font-bold text-foreground text-base">Mandatory Rejection Feedback & Remedial Planning</h3>
             <p className="text-xs text-slate-600 mt-0.5">
               Rejection feedback allows placement officers to diagnose skill gaps and organize remedial sessions.
             </p>
           </div>
 
-          <div className="divide-y divide-slate-200 border border-slate-200 rounded-xl">
+          <div className="divide-y divide-border border border-border rounded-xl">
             {rejections.map(rf => (
-              <div key={rf.id} className="p-4 hover:bg-slate-50 transition-colors space-y-2">
+              <div key={rf.id} className="p-4 hover:bg-muted transition-colors space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-sm">{rf.studentName}</span>
+                    <span className="font-bold text-foreground text-sm">{rf.studentName}</span>
                     <span className="text-xs text-slate-500">applied to <strong className="text-slate-800">{rf.jobTitle}</strong> @ {rf.company}</span>
                   </div>
                   <span className="text-xs font-semibold px-2.5 py-1 rounded bg-rose-50 text-rose-800 border border-rose-200">
@@ -661,8 +661,8 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                   </span>
                 </div>
 
-                <div className="bg-slate-50 p-3 rounded-lg text-xs text-slate-700 border border-slate-200">
-                  <strong className="text-slate-900 block mb-1">Student Rejection Feedback:</strong>
+                <div className="bg-muted p-3 rounded-lg text-xs text-slate-700 border border-border">
+                  <strong className="text-foreground block mb-1">Student Rejection Feedback:</strong>
                   "{rf.details}"
                 </div>
 
@@ -682,8 +682,8 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
       {/* CANDIDATE MATCH DRAWER / MODAL */}
       {matchingJob && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="p-4 border-b border-slate-200 bg-slate-900 text-white flex items-center justify-between">
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-border overflow-hidden">
+            <div className="p-4 border-b border-border bg-primary text-white flex items-center justify-between">
               <div>
                 <span className="text-xs text-amber-400 font-semibold uppercase tracking-wider">Rule-Based Candidate Match</span>
                 <h3 className="text-base font-bold">{matchingJob.title} @ {matchingJob.company}</h3>
@@ -697,12 +697,12 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                 Candidates ranked using Phase 1 deterministic rule evaluation: School & Program alignment, skill overlap, and academic indicators.
               </p>
 
-              <div className="divide-y divide-slate-200 border border-slate-200 rounded-xl">
+              <div className="divide-y divide-border border border-border rounded-xl">
                 {rankedCandidates.map(({ student, match }) => (
-                  <div key={student.id} className="p-3.5 hover:bg-slate-50 space-y-1.5 text-xs">
+                  <div key={student.id} className="p-3.5 hover:bg-muted space-y-1.5 text-xs">
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-bold text-slate-900 text-sm">{student.fullName}</span>
+                        <span className="font-bold text-foreground text-sm">{student.fullName}</span>
                         <span className="text-slate-500 ml-1.5">({student.school} • {student.program})</span>
                       </div>
                       <MatchVerdictBadge verdict={match.verdict} score={match.matchScore} />
@@ -725,10 +725,10 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
               </div>
             </div>
 
-            <div className="p-3 border-t border-slate-200 bg-slate-50 flex justify-end">
+            <div className="p-3 border-t border-border bg-muted flex justify-end">
               <button
                 onClick={() => setMatchingJob(null)}
-                className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-semibold rounded-lg"
+                className="px-4 py-1.5 bg-secondary hover:bg-slate-300 text-slate-800 text-xs font-semibold rounded-lg"
               >
                 Close Match View
               </button>
@@ -740,9 +740,9 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
       {/* POST NEW JOB MODAL */}
       {showCreateJob && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-900 text-base">Post New Job Lead</h3>
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-border space-y-4">
+            <div className="flex items-center justify-between border-b border-border/70 pb-3">
+              <h3 className="font-bold text-foreground text-base">Post New Job Lead</h3>
               <button onClick={() => setShowCreateJob(false)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
 
@@ -872,8 +872,8 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
       {/* SCHEDULE INTERVIEW MODAL */}
       {schedulingApp && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <h3 className="font-bold text-slate-900 text-base">Schedule Interview Round</h3>
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-border space-y-4">
+            <h3 className="font-bold text-foreground text-base">Schedule Interview Round</h3>
             <p className="text-xs text-slate-500">
               For {schedulingApp.studentName} applying to {schedulingApp.jobTitle} @ {schedulingApp.company}
             </p>

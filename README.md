@@ -1,20 +1,14 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# HACA Placement — backup copy (2026-09-18)
 
-# Run and deploy your AI Studio app
+**The live code lives in `nidhill/SHO-PRODUCTION`** — this repo is a backup snapshot only.
+Do not develop here; changes have to be hand-ported to the monorepo.
 
-This contains everything you need to run your app locally.
+- Frontend: `SHO-PRODUCTION/placement/` (this folder's root) — Vite + React, deployed on Vercel,
+  talks to the shared SHO server with `VITE_API_URL=https://ecoapi.harisandcoacademy.com`.
+- Backend: `SHO-PRODUCTION/server/placement/` and `server/routes/placement.js` (copied here under `backend/`)
+  — mounted at `/api/placement` inside the SHO Express/MongoDB server. There is no standalone server any more.
+- Auth: SHO App staff token (admin / placement_team / leadership / ceo_haca) or LMS student token.
+- Eligibility: mentors mark students in SHO App → Placement Eligibility (`backend/routes/placementEligibility.js`),
+  synced instantly into `placement_students`.
 
-View your app in AI Studio: https://ai.studio/apps/9ae32e35-5fb1-4a20-ae27-c737564acf32
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Snapshot of SHO-PRODUCTION `main` at commit b80c026.

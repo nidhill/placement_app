@@ -52,11 +52,11 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = () => {
     <div className="space-y-6">
       
       {/* Executive Header */}
-      <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800">
+      <div className="bg-primary text-white rounded-2xl p-6 shadow-md border border-primary/40">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold border border-indigo-500/30 mb-1.5">
-              <TrendingUp className="w-3.5 h-3.5 text-indigo-400" />
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-semibold border border-blue-500/30 mb-1.5">
+              <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
               Executive Governance & KPIs
             </div>
             <h1 className="text-2xl font-bold tracking-tight">Institutional Placement Intelligence</h1>
@@ -66,7 +66,7 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="bg-slate-800/90 border border-slate-700 rounded-xl p-3 text-right">
+            <div className="bg-primary/85/90 border border-slate-700 rounded-xl p-3 text-right">
               <span className="text-[10px] text-slate-400 block uppercase font-medium">Institutional Placement Rate</span>
               <div className="text-2xl font-extrabold text-white flex items-center justify-end gap-2">
                 {kpis.overallPlacementRate}%
@@ -78,8 +78,8 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = () => {
       </div>
 
       {/* Strict Color Legend Rule Banner */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-        <div className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-2">
+      <div className="bg-white rounded-2xl border border-border p-4 shadow-sm">
+        <div className="text-xs font-bold text-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-slate-700" /> PRD Section 3.6 Non-Negotiable Health Thresholds
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -114,25 +114,25 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = () => {
 
       {/* High-Level Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <span className="text-xs text-slate-500 font-medium block">Total Eligible Candidates</span>
-          <div className="text-2xl font-bold text-slate-900 mt-1">{kpis.totalEligible}</div>
+          <div className="text-2xl font-bold text-foreground mt-1">{kpis.totalEligible}</div>
           <span className="text-[11px] text-slate-400 mt-0.5 block">{kpis.totalStudents} total registered</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <span className="text-xs text-slate-500 font-medium block">Successfully Placed</span>
           <div className="text-2xl font-bold text-emerald-700 mt-1">{kpis.totalPlaced}</div>
           <span className="text-[11px] text-slate-400 mt-0.5 block">Joined or Offer Accepted</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <span className="text-xs text-slate-500 font-medium block">Active Applications</span>
           <div className="text-2xl font-bold text-blue-700 mt-1">{kpis.totalActiveApplications}</div>
           <span className="text-[11px] text-slate-400 mt-0.5 block">In active recruitment funnel</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <span className="text-xs text-slate-500 font-medium block">Interviews Conducted</span>
           <div className="text-2xl font-bold text-purple-700 mt-1">{kpis.totalInterviews}</div>
           <span className="text-[11px] text-slate-400 mt-0.5 block">{kpis.totalOffers} Total Offers</span>
@@ -140,9 +140,9 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = () => {
       </div>
 
       {/* SOURCING CHANNEL PERFORMANCE & ROI EVALUATION */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4">
+      <div className="bg-white rounded-2xl border border-border shadow-sm p-5 space-y-4">
         <div>
-          <h3 className="font-bold text-slate-900 text-base">Job Source Channel Performance & Conversion ROI</h3>
+          <h3 className="font-bold text-foreground text-base">Job Source Channel Performance & Conversion ROI</h3>
           <p className="text-xs text-slate-500 mt-0.5">
             Evaluates conversion efficacy across AI Job Scraper (Apify), Staff Referrals, and Direct Placement Outreach. Flags low-converting channels.
           </p>
@@ -150,9 +150,9 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {kpis.channelMetrics.map(cm => (
-            <div key={cm.channel} className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+            <div key={cm.channel} className="p-4 rounded-xl border border-border bg-muted/60 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900">{cm.label}</span>
+                <span className="text-xs font-bold text-foreground">{cm.label}</span>
                 {cm.isLowPerforming && (
                   <span className="text-[10px] px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3 text-rose-600" /> Low Conversion
@@ -161,11 +161,11 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = () => {
               </div>
 
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-extrabold text-slate-900">{cm.conversionRate}%</span>
+                <span className="text-2xl font-extrabold text-foreground">{cm.conversionRate}%</span>
                 <span className="text-xs text-slate-500">Placement Conversion Rate</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-slate-200">
+              <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-border">
                 <div>
                   <span className="text-slate-400 block">Jobs Sourced:</span>
                   <span className="font-semibold text-slate-800">{cm.jobsDiscovered}</span>
@@ -192,17 +192,17 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* School-Wise & Program-Wise Breakdown */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-            <h3 className="font-bold text-slate-900 text-sm">School & Program Placement Rate</h3>
+        <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-border bg-muted flex items-center justify-between">
+            <h3 className="font-bold text-foreground text-sm">School & Program Placement Rate</h3>
             <span className="text-xs text-slate-400">Strict Threshold Evaluation</span>
           </div>
 
-          <div className="divide-y divide-slate-200 text-xs">
+          <div className="divide-y divide-border text-xs">
             {kpis.programMetrics.map(pm => (
-              <div key={pm.program} className="p-3.5 hover:bg-slate-50 flex items-center justify-between gap-3">
+              <div key={pm.program} className="p-3.5 hover:bg-muted flex items-center justify-between gap-3">
                 <div className="space-y-0.5">
-                  <div className="font-bold text-slate-900">{pm.program}</div>
+                  <div className="font-bold text-foreground">{pm.program}</div>
                   <div className="text-[11px] text-slate-500">{pm.school}</div>
                   <div className="text-[10px] text-slate-400">
                     {pm.placed} placed out of {pm.totalEligible} eligible candidates
@@ -211,7 +211,7 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = () => {
 
                 <div className="text-right space-y-1">
                   <HealthStatusBadge status={pm.healthStatus} rate={pm.rate} />
-                  <div className="w-24 bg-slate-200 h-1.5 rounded-full overflow-hidden ml-auto">
+                  <div className="w-24 bg-secondary h-1.5 rounded-full overflow-hidden ml-auto">
                     <div
                       className={`h-full ${pm.healthStatus === 'GREEN' ? 'bg-emerald-500' : pm.healthStatus === 'YELLOW' ? 'bg-amber-500' : 'bg-rose-500'}`}
                       style={{ width: `${Math.min(pm.rate, 100)}%` }}
@@ -224,17 +224,17 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = () => {
         </div>
 
         {/* Batch-Wise Cohort Breakdown */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-            <h3 className="font-bold text-slate-900 text-sm">Batch & Cohort Health Breakdown</h3>
+        <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-border bg-muted flex items-center justify-between">
+            <h3 className="font-bold text-foreground text-sm">Batch & Cohort Health Breakdown</h3>
             <span className="text-xs text-slate-400">Action Triggers</span>
           </div>
 
-          <div className="divide-y divide-slate-200 text-xs">
+          <div className="divide-y divide-border text-xs">
             {kpis.batchMetrics.map(bm => (
-              <div key={bm.batch} className="p-3.5 hover:bg-slate-50 flex items-center justify-between gap-3">
+              <div key={bm.batch} className="p-3.5 hover:bg-muted flex items-center justify-between gap-3">
                 <div className="space-y-0.5">
-                  <div className="font-bold text-slate-900">{bm.batch}</div>
+                  <div className="font-bold text-foreground">{bm.batch}</div>
                   <div className="text-[11px] text-slate-500">{bm.program}</div>
                   <div className="text-[10px] text-slate-400">
                     {bm.placed} / {bm.totalEligible} Candidates Placed
@@ -243,7 +243,7 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = () => {
 
                 <div className="text-right space-y-1">
                   <HealthStatusBadge status={bm.healthStatus} rate={bm.rate} />
-                  <div className="w-24 bg-slate-200 h-1.5 rounded-full overflow-hidden ml-auto">
+                  <div className="w-24 bg-secondary h-1.5 rounded-full overflow-hidden ml-auto">
                     <div
                       className={`h-full ${bm.healthStatus === 'GREEN' ? 'bg-emerald-500' : bm.healthStatus === 'YELLOW' ? 'bg-amber-500' : 'bg-rose-500'}`}
                       style={{ width: `${Math.min(bm.rate, 100)}%` }}

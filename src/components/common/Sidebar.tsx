@@ -20,12 +20,11 @@ import {
   Share2,
   Clock,
   User as UserIcon,
-  ShieldCheck,
   Bell,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronLeft,
+  ChevronRight,
+  X,
   LogOut,
-  RefreshCw
 } from 'lucide-react';
 
 export type NavigationItem = 
@@ -43,7 +42,7 @@ export type NavigationItem =
   | 'integrations'
   | 'audit_logs'
   | 'settings'
-  // Placement Officer specific
+  // Placement Team specific
   | 'candidate_matching'
   | 'job_sources'
   | 'follow_ups'
@@ -76,7 +75,6 @@ interface SidebarProps {
   currentUser: User | null;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
-  onOpenPersonaModal: () => void;
   onSignOut?: () => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
@@ -90,7 +88,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentUser,
   isCollapsed,
   onToggleCollapse,
-  onOpenPersonaModal,
   onSignOut,
   isOpenMobile = false,
   onCloseMobile
@@ -116,58 +113,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const getRoleDisplayName = (r: UserRole) => {
     switch (r) {
-      case 'MAIN_ADMIN': return 'Main Admin';
-      case 'PLACEMENT_OFFICER': return 'Placement Officer';
+      case 'MAIN_ADMIN': return 'Admin';
+      case 'PLACEMENT_OFFICER': return 'Placement Team';
       case 'MANAGEMENT': return 'Management';
       case 'STUDENT': return 'Student';
       default: return 'User';
     }
-  };
-
-  // Nav item renderer
-  const renderNavItem = (item: NavLinkConfig) => {
-    const active = isItemActive(item.id);
-    const Icon = item.icon;
-
-    if (isCollapsed) {
-      return (
-        <button
-          key={item.id}
-          id={`nav-${item.id}`}
-          onClick={() => handleNavClick(item.id)}
-          title={item.label}
-          className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center transition-all duration-150 relative group ${
-            active
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Icon className="w-4 h-4 shrink-0" />
-          
-          {/* Tooltip on hover in collapsed mode */}
-          <span className="sr-only">{item.label}</span>
-          <div className="hidden md:group-hover:flex absolute left-full ml-2.5 px-2.5 py-1 bg-slate-900 text-white text-xs font-medium rounded-md whitespace-nowrap z-50 pointer-events-none shadow-md">
-            {item.label}
-          </div>
-        </button>
-      );
-    }
-
-    return (
-      <button
-        key={item.id}
-        id={`nav-${item.id}`}
-        onClick={() => handleNavClick(item.id)}
-        className={`w-full flex items-center px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 ${
-          active
-            ? 'bg-slate-900 text-white shadow-xs'
-            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-        }`}
-      >
-        <Icon className={`w-4 h-4 mr-3 shrink-0 ${active ? 'text-white' : 'text-slate-400'}`} />
-        <span className="truncate">{item.label}</span>
-      </button>
-    );
   };
 
   // Define role navigation sets per user intent
@@ -219,208 +170,115 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'student_notifications', label: 'Notifications', icon: Bell },
   ];
 
+  const navItems: NavLinkConfig[] =
+    role === 'MAIN_ADMIN' ? [...adminOverviewNav, ...adminAdminNav]
+    : role === 'PLACEMENT_OFFICER' ? placementOfficerNav
+    : role === 'MANAGEMENT' ? managementNav
+    : studentNav;
+  const homeId: NavigationItem = role === 'STUDENT' ? 'student_dashboard' : 'dashboard';
+  const initials = (currentUser?.fullName || 'U').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+
+  // Same shell as the LMS sidebar: an icon rail on the canvas by default
+  // (round buttons, the active one blue), an expanded variant with labels,
+  // both grouped into white pills; logout in its own pill at the bottom.
+  const wide = !isCollapsed;
+  const railItem = (active: boolean) =>
+    `relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
+      active ? 'bg-primary text-primary-foreground shadow-[0_8px_18px_-8px_rgba(30,80,255,0.6)]' : 'text-foreground/55 hover:text-foreground hover:bg-black/[0.05]'
+    }`;
+  const rowItem = (active: boolean) =>
+    `relative flex w-full shrink-0 items-center gap-3 rounded-full py-2.5 pl-3 pr-4 text-sm font-semibold transition-all duration-200 ${
+      active ? 'bg-primary text-primary-foreground' : 'text-foreground/65 hover:text-foreground hover:bg-black/[0.05]'
+    }`;
+  const drawerItem = (active: boolean) =>
+    `relative flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm font-semibold transition-colors ${
+      active ? 'bg-primary text-primary-foreground' : 'text-foreground/70 hover:bg-black/[0.05] hover:text-foreground'
+    }`;
+  const item = (active: boolean) => (wide ? rowItem(active) : railItem(active));
+  const Glyph = ({ icon: Icon }: { icon: React.ComponentType<{ className?: string }> }) => (
+    <span className="flex h-6 w-6 shrink-0 items-center justify-center"><Icon className="h-[19px] w-[19px]" /></span>
+  );
+  // The admin's second group (Users/Integrations/…) gets a hairline in the pill.
+  const firstAdminId = adminAdminNav[0].id;
+
   return (
     <>
-      {/* Mobile Drawer Backdrop */}
-      {isOpenMobile && (
-        <div 
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 md:hidden animate-in fade-in"
-          onClick={onCloseMobile}
-        />
-      )}
+      {isOpenMobile && <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={onCloseMobile} />}
 
-      {/* Main Sidebar Element */}
-      <aside 
-        id="app-left-sidebar"
-        className={`
-          bg-white border-r border-slate-200/90 flex flex-col shrink-0 h-full select-none
-          transition-[width,transform] duration-200 ease-in-out
-          fixed md:relative top-0 bottom-0 left-0 z-50 md:z-20
-          ${isOpenMobile ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          ${isCollapsed ? 'w-[68px]' : 'w-64'}
-        `}
-      >
-        {/* Brand Header & Collapse Toggle */}
-        <div className={`h-16 border-b border-slate-100 flex items-center px-3.5 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-          
-          {/* Logo Brand */}
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div 
-              onClick={isCollapsed ? onToggleCollapse : undefined}
-              className={`w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-white shrink-0 shadow-2xs ${isCollapsed ? 'cursor-pointer hover:bg-slate-800' : ''}`}
-              title="HACA Placement Platform"
-            >
-              <GraduationCap className="w-4.5 h-4.5 text-white" />
-            </div>
+      {/* ── Desktop rail / expanded sidebar ─────────────────────────── */}
+      <aside className={`hidden md:flex h-full min-h-0 shrink-0 flex-col py-5 gap-4 transition-[width] duration-300 ${wide ? 'w-[248px] px-4 items-stretch' : 'w-[92px] items-center'}`}>
+        <div className={`mb-1 flex items-center ${wide ? 'justify-between px-1' : 'flex-col gap-2'}`}>
+          <button onClick={() => handleNav(homeId)} className="flex items-center gap-2" title="HACA Placement">
+            <img src="/haca-logo.png" alt="HACA" className={`w-auto object-contain ${wide ? 'h-8' : 'h-6 max-w-[64px]'}`} />
+            {wide && <span className="text-[9px] font-extrabold tracking-[0.2em] text-foreground/60">PLACEMENT</span>}
+          </button>
+          <button
+            onClick={onToggleCollapse}
+            title={wide ? 'Collapse sidebar' : 'Expand sidebar'}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-card text-foreground/60 shadow-sm hover:text-foreground"
+          >
+            {wide ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+        </div>
 
-            {!isCollapsed && (
-              <div className="truncate">
-                <div className="font-bold text-slate-900 text-sm tracking-tight leading-tight">HACA</div>
-                <div className="text-[11px] text-slate-400 font-medium truncate">Placement Management</div>
-              </div>
-            )}
+        <nav className={`flex min-h-0 flex-col gap-1.5 overflow-y-auto rounded-[28px] bg-card p-2 shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${!wide ? 'items-center' : ''}`}>
+          {navItems.map(({ id, icon, label }) => (
+            <React.Fragment key={id}>
+              {role === 'MAIN_ADMIN' && id === firstAdminId && <div className={`my-1 h-px bg-border ${wide ? 'mx-3' : 'w-6'}`} />}
+              <button id={`nav-${id}`} onClick={() => handleNavClick(id)} title={wide ? undefined : label} className={item(isItemActive(id))}>
+                <Glyph icon={icon} />
+                {wide && <span className="flex-1 truncate text-left">{label}</span>}
+              </button>
+            </React.Fragment>
+          ))}
+        </nav>
+
+        <div className={`mt-auto flex shrink-0 flex-col gap-1.5 rounded-[28px] bg-card p-2 shadow-sm ${!wide ? 'items-center' : ''}`}>
+          {onSignOut && (
+            <button onClick={onSignOut} title={wide ? undefined : 'Logout'} className={`${item(false)} hover:text-coral`}>
+              <Glyph icon={LogOut} />{wide && <span className="flex-1 text-left">Logout</span>}
+            </button>
+          )}
+        </div>
+      </aside>
+
+      {/* ── Mobile drawer ────────────────────────────────────────────── */}
+      <aside className={`md:hidden fixed left-0 top-0 z-50 flex h-full w-[280px] flex-col bg-card transition-transform duration-300 rounded-r-[28px] shadow-2xl ${isOpenMobile ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex h-16 items-center justify-between px-5">
+          <div className="flex items-center gap-2.5">
+            <img src="/haca-logo.png" alt="HACA" className="h-7 w-auto object-contain" />
+            <span className="text-[10px] font-extrabold tracking-[0.2em] text-foreground/60">PLACEMENT</span>
           </div>
+          <button onClick={onCloseMobile} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"><X className="h-4 w-4" /></button>
+        </div>
 
-          {/* Expand/Collapse Toggle Button */}
-          {!isCollapsed && (
-            <button
-              onClick={onToggleCollapse}
-              title="Collapse sidebar"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <PanelLeftClose className="w-4 h-4" />
+        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
+          {navItems.map(({ id, icon: Icon, label }) => (
+            <button key={id} onClick={() => handleNavClick(id)} className={drawerItem(isItemActive(id))}>
+              <Icon className="h-[18px] w-[18px] shrink-0" /><span className="flex-1 text-left">{label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="px-3 py-3 space-y-1 border-t border-border">
+          {onSignOut && (
+            <button onClick={onSignOut} className={`${drawerItem(false)} hover:text-coral`}>
+              <LogOut className="h-[18px] w-[18px] shrink-0" />Logout
             </button>
           )}
         </div>
 
-        {/* Collapsed Expand Quick Button Under Header */}
-        {isCollapsed && (
-          <div className="pt-2 px-2 flex justify-center">
-            <button
-              onClick={onToggleCollapse}
-              title="Expand sidebar"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <PanelLeftOpen className="w-4 h-4" />
-            </button>
+        {currentUser && (
+          <div className="px-4 pb-5">
+            <div className="flex items-center gap-3 rounded-2xl bg-muted px-3 py-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-extrabold text-primary">{initials}</div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold truncate leading-none">{currentUser.fullName}</p>
+                <p className="text-[11px] text-muted-foreground truncate mt-1">{getRoleDisplayName(role)}</p>
+              </div>
+            </div>
           </div>
         )}
-
-        {/* Dynamic Role-Based Navigation Sections */}
-        <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
-          
-          {/* ===================================================
-              ROLE 1: MAIN ADMIN
-              =================================================== */}
-          {role === 'MAIN_ADMIN' && (
-            <>
-              <div className="space-y-1">
-                {!isCollapsed && (
-                  <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Overview
-                  </div>
-                )}
-                {adminOverviewNav.map(renderNavItem)}
-              </div>
-
-              <div className="space-y-1 pt-2">
-                {!isCollapsed ? (
-                  <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-t border-slate-100 pt-3">
-                    Administration
-                  </div>
-                ) : (
-                  <div className="w-6 h-[1px] bg-slate-200 mx-auto my-1.5" />
-                )}
-                {adminAdminNav.map(renderNavItem)}
-              </div>
-            </>
-          )}
-
-          {/* ===================================================
-              ROLE 2: PLACEMENT OFFICER
-              =================================================== */}
-          {role === 'PLACEMENT_OFFICER' && (
-            <div className="space-y-1">
-              {!isCollapsed && (
-                <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Overview
-                </div>
-              )}
-              {placementOfficerNav.map(renderNavItem)}
-            </div>
-          )}
-
-          {/* ===================================================
-              ROLE 3: MANAGEMENT
-              =================================================== */}
-          {role === 'MANAGEMENT' && (
-            <div className="space-y-1">
-              {!isCollapsed && (
-                <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Overview
-                </div>
-              )}
-              {managementNav.map(renderNavItem)}
-            </div>
-          )}
-
-          {/* ===================================================
-              ROLE 4: STUDENT
-              =================================================== */}
-          {role === 'STUDENT' && (
-            <div className="space-y-1">
-              {!isCollapsed && (
-                <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Student Portal
-                </div>
-              )}
-              {studentNav.map(renderNavItem)}
-            </div>
-          )}
-
-        </div>
-
-        {/* Footer: User Role Card & Actions */}
-        <div className="p-2.5 border-t border-slate-100 bg-slate-50/70 shrink-0">
-          
-          {isCollapsed ? (
-            <div className="flex flex-col items-center gap-2">
-              <button
-                onClick={onOpenPersonaModal}
-                title={`Active: ${getRoleDisplayName(role)} · Click to switch`}
-                className="w-9 h-9 rounded-xl bg-slate-200/80 text-slate-800 font-bold text-xs flex items-center justify-center hover:bg-slate-300 transition-colors"
-              >
-                {currentUser?.fullName ? currentUser.fullName.charAt(0) : 'U'}
-              </button>
-              {onSignOut && (
-                <button
-                  onClick={onSignOut}
-                  title="Sign Out to Login Page"
-                  className="w-8 h-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              
-              {/* Active Role Indicator */}
-              <div className="px-2 py-1 flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Active Role
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-800 font-semibold">
-                  {getRoleDisplayName(role)}
-                </span>
-              </div>
-
-              {/* Persona Switcher Quick Button */}
-              <button
-                onClick={onOpenPersonaModal}
-                className="w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 transition-colors shadow-2xs"
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <RefreshCw className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                  <span className="truncate">Switch Demo Role</span>
-                </div>
-              </button>
-
-              {/* Sign Out Button */}
-              {onSignOut && (
-                <button
-                  onClick={onSignOut}
-                  className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50/80 rounded-lg transition-colors"
-                >
-                  <span className="font-medium">Sign Out</span>
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          )}
-
-        </div>
-
       </aside>
     </>
   );

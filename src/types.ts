@@ -266,7 +266,7 @@ export interface JobApplication {
   needsHelp?: boolean;         // Student flagged they need Placement Team support
   helpStatus?: HelpStatus;     // Placement Team help tracking
   helpUpdatedAt?: string;      // Last time helpStatus was updated
-  helpUpdatedBy?: string;      // Name of Placement Officer who updated helpStatus
+  helpUpdatedBy?: string;      // Name of Placement Team who updated helpStatus
   // --- Existing fields ---
   appliedAt: string;           // Keep for backward compat (same as startedAt)
   createdAt?: string;          // Timestamp when application was created

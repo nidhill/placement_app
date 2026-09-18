@@ -62,20 +62,20 @@ export const EmergencyOverrideView: React.FC<EmergencyOverrideViewProps> = ({ on
       
       {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Emergency Overrides & Settings</h2>
+        <h2 className="text-xl font-semibold text-foreground tracking-tight">Emergency Overrides & Settings</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Main Administrator authority to grant placement portal access under verified extenuating circumstances
+          Admin authority to grant placement portal access under verified extenuating circumstances
         </p>
       </div>
 
       {/* Override Tool */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-5 max-w-2xl">
+      <div className="bg-white rounded-2xl border border-border shadow-sm p-5 max-w-2xl">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
             <ShieldAlert className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Student Placement Clearance Override</h3>
+            <h3 className="text-sm font-semibold text-foreground">Student Placement Clearance Override</h3>
             <p className="text-xs text-slate-500">Every override is logged permanently in the system audit trail.</p>
           </div>
         </div>
@@ -94,7 +94,7 @@ export const EmergencyOverrideView: React.FC<EmergencyOverrideViewProps> = ({ on
               <select
                 value={selectedStudentId}
                 onChange={e => setSelectedStudentId(e.target.value)}
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 appearance-none pr-8 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+                className="w-full p-2.5 bg-muted border border-border rounded-lg text-foreground appearance-none pr-8 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
               >
                 {students.map(s => (
                   <option key={s.id} value={s.id}>
@@ -107,7 +107,7 @@ export const EmergencyOverrideView: React.FC<EmergencyOverrideViewProps> = ({ on
           </div>
 
           {currentSelectedStudent && (
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
+            <div className="p-3 bg-muted rounded-lg border border-border/70 flex items-center justify-between">
               <div>
                 <span className="text-slate-500 block text-[11px]">Current Status</span>
                 <div className="mt-1">
@@ -131,7 +131,7 @@ export const EmergencyOverrideView: React.FC<EmergencyOverrideViewProps> = ({ on
               placeholder="e.g. Approved by Academic Board due to industry freelance portfolio and medical attendance waiver."
               value={reason}
               onChange={e => setReason(e.target.value)}
-              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+              className="w-full p-2.5 bg-muted border border-border rounded-lg text-foreground focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
             />
           </div>
 
@@ -139,7 +139,7 @@ export const EmergencyOverrideView: React.FC<EmergencyOverrideViewProps> = ({ on
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 transition-colors disabled:opacity-50 text-xs"
+              className="px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 text-xs"
             >
               {submitting ? 'Applying Override...' : 'Execute Admin Override'}
             </button>

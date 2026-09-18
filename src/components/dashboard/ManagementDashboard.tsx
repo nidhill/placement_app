@@ -67,39 +67,22 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
   const studentsSeeking = (kpis.totalStudents ?? 0) - studentsPlaced;
   const totalOffers = kpis.totalOffers ?? 0;
   const totalInterviews = kpis.totalInterviews ?? 0;
-  const totalApplications = kpis.totalApplications ?? 0;
+  const totalApplications = kpis.totalActiveApplications ?? 0;
 
   // Placement Health Threshold:
   // RED < 50%, YELLOW 50%-59%, GREEN >= 60%
   const healthStatus = placementRate >= 60 ? 'GREEN' : placementRate >= 50 ? 'YELLOW' : 'RED';
 
-  // Placement by School data
-  const schoolPerformance = [
-    { school: 'School of Technology', rate: 74, placed: 142, total: 192 },
-    { school: 'School of Design', rate: 68, placed: 78, total: 115 },
-    { school: 'School of Business', rate: 62, placed: 73, total: 118 },
-  ];
-
-  // Placement by Program data
-  const programPerformance = [
-    { program: 'B.Tech Computer Science', school: 'Tech', rate: 82, placed: 82, total: 100 },
-    { program: 'B.Des Interaction Design', school: 'Design', rate: 71, placed: 46, total: 65 },
-    { program: 'MBA Marketing & Analytics', school: 'Business', rate: 65, placed: 52, total: 80 },
-    { program: 'B.Tech AI & Data Science', school: 'Tech', rate: 78, placed: 60, total: 77 },
-  ];
-
-  // Placement by Batch data
-  const batchPerformance = [
-    { batch: 'Batch 2026 (Graduating)', rate: placementRate, placed: studentsPlaced, total: 428 },
-    { batch: 'Batch 2025 (Alumni Benchmark)', rate: 84, placed: 378, total: 450 },
-  ];
-
-  // Job Source Performance
-  const sourcePerformance = [
-    { source: 'AI Scraper (Apify Sourcing)', offers: 112, share: '38%' },
-    { source: 'Staff & Leadership Referrals', offers: 94, share: '32%' },
-    { source: 'Direct Corporate Partnerships', offers: 87, share: '30%' },
-  ];
+  // All from the analytics service (real students, applications, jobs).
+  const schoolPerformance = (kpis.schoolMetrics || []).map(m => ({ school: m.school, rate: m.rate, placed: m.placed, total: m.totalEligible }));
+  const programPerformance = (kpis.programMetrics || []).map(m => ({ program: m.program, school: m.school, rate: m.rate, placed: m.placed, total: m.totalEligible }));
+  const batchPerformance = (kpis.batchMetrics || []).map(m => ({ batch: m.batch, rate: m.rate, placed: m.placed, total: m.totalEligible }));
+  const totalChannelPlacements = (kpis.channelMetrics || []).reduce((t, c) => t + (c.placements || 0), 0);
+  const sourcePerformance = (kpis.channelMetrics || []).map(c => ({
+    source: c.label,
+    offers: c.placements || 0,
+    share: totalChannelPlacements > 0 ? `${Math.round(((c.placements || 0) / totalChannelPlacements) * 100)}%` : '0%',
+  }));
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -107,7 +90,7 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
       {/* Header with Institutional Placement Health Indicator */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
             Institutional Placement Governance
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -134,7 +117,7 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
 
           <button
             onClick={() => onNavigate('reports')}
-            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+            className="px-3 py-1.5 bg-white border border-border text-slate-700 hover:bg-muted rounded-2xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
             <span>Export Board Report</span>
@@ -146,46 +129,46 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         
         {/* 1. Overall Placement Rate */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Placement Rate</div>
-          <div className="mt-1 text-2xl font-bold text-slate-900">{placementRate}%</div>
+          <div className="mt-1 text-2xl font-bold text-foreground">{placementRate}%</div>
           <div className="text-[10px] text-emerald-600 font-medium mt-1 flex items-center gap-1">
             <TrendingUp className="w-3 h-3" /> Target ≥ 60%
           </div>
         </div>
 
         {/* 2. Students Placed */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Students Placed</div>
-          <div className="mt-1 text-2xl font-bold text-slate-900">{studentsPlaced}</div>
+          <div className="mt-1 text-2xl font-bold text-foreground">{studentsPlaced}</div>
           <div className="text-[10px] text-slate-500 mt-1">Confirmed offers</div>
         </div>
 
         {/* 3. Students Seeking Placement */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Seeking Placement</div>
-          <div className="mt-1 text-2xl font-bold text-slate-900">{studentsSeeking}</div>
+          <div className="mt-1 text-2xl font-bold text-foreground">{studentsSeeking}</div>
           <div className="text-[10px] text-amber-600 font-medium mt-1">Active in pipeline</div>
         </div>
 
         {/* 4. Offers */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Total Offers</div>
-          <div className="mt-1 text-2xl font-bold text-slate-900">{totalOffers}</div>
+          <div className="mt-1 text-2xl font-bold text-foreground">{totalOffers}</div>
           <div className="text-[10px] text-blue-600 font-medium mt-1">Under review</div>
         </div>
 
         {/* 5. Interviews */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Interviews</div>
-          <div className="mt-1 text-2xl font-bold text-slate-900">{totalInterviews}</div>
+          <div className="mt-1 text-2xl font-bold text-foreground">{totalInterviews}</div>
           <div className="text-[10px] text-purple-600 font-medium mt-1">Completed rounds</div>
         </div>
 
         {/* 6. Applications */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+        <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
           <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Applications</div>
-          <div className="mt-1 text-2xl font-bold text-slate-900">{totalApplications}</div>
+          <div className="mt-1 text-2xl font-bold text-foreground">{totalApplications}</div>
           <div className="text-[10px] text-slate-500 mt-1">Candidate volume</div>
         </div>
 
@@ -195,13 +178,13 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Placement Trend (Left 2 cols) */}
-        <div className="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">Placement Trajectory</h3>
+              <h3 className="text-sm font-semibold text-foreground">Placement Trajectory</h3>
               <p className="text-xs text-slate-400 mt-0.5">Month-by-month cumulative conversion curve</p>
             </div>
-            <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded">
+            <span className="text-xs font-semibold text-slate-700 bg-muted px-2.5 py-1 rounded">
               Academic Year 2026
             </span>
           </div>
@@ -218,7 +201,7 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
 
               <polyline
                 fill="none"
-                stroke="#0f172a"
+                stroke="#1E50FF"
                 strokeWidth="2.5"
                 points="10,86 100,74 200,64 300,55 400,45 490,38"
               />
@@ -232,7 +215,7 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
                 { x: 490, y: 38, val: `${placementRate}%` },
               ].map((p, i) => (
                 <g key={i}>
-                  <circle cx={p.x} cy={p.y} r="3.5" fill="#0f172a" />
+                  <circle cx={p.x} cy={p.y} r="3.5" fill="#1E50FF" />
                   <text x={p.x} y={p.y - 8} textAnchor="middle" fill="#475569" fontSize="10" fontWeight="bold">
                     {p.val}
                   </text>
@@ -241,7 +224,7 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
             </svg>
           </div>
 
-          <div className="flex justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-2 px-2">
+          <div className="flex justify-between text-[11px] text-slate-400 border-t border-border/70 pt-2 px-2">
             <span>Jan</span>
             <span>Feb</span>
             <span>Mar</span>
@@ -252,16 +235,16 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
         </div>
 
         {/* Placement Health Threshold Breakdown */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Placement Health Bands</h3>
+            <h3 className="text-sm font-semibold text-foreground">Placement Health Bands</h3>
             <p className="text-xs text-slate-400 mt-0.5">Accreditation regulatory guidelines</p>
 
             <div className="space-y-3 mt-4 text-xs">
               
               {/* Green */}
               <div className={`p-3 rounded-xl border ${
-                healthStatus === 'GREEN' ? 'bg-emerald-50/80 border-emerald-300 ring-1 ring-emerald-300' : 'bg-slate-50 border-slate-200 opacity-60'
+                healthStatus === 'GREEN' ? 'bg-emerald-50/80 border-emerald-300 ring-1 ring-emerald-300' : 'bg-muted border-border opacity-60'
               }`}>
                 <div className="flex items-center justify-between font-bold text-emerald-900">
                   <span className="flex items-center gap-1.5">
@@ -277,7 +260,7 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
 
               {/* Yellow */}
               <div className={`p-3 rounded-xl border ${
-                healthStatus === 'YELLOW' ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-300' : 'bg-slate-50 border-slate-200 opacity-60'
+                healthStatus === 'YELLOW' ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-300' : 'bg-muted border-border opacity-60'
               }`}>
                 <div className="flex items-center justify-between font-bold text-amber-900">
                   <span className="flex items-center gap-1.5">
@@ -293,7 +276,7 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
 
               {/* Red */}
               <div className={`p-3 rounded-xl border ${
-                healthStatus === 'RED' ? 'bg-rose-50/80 border-rose-300 ring-1 ring-rose-300' : 'bg-slate-50 border-slate-200 opacity-60'
+                healthStatus === 'RED' ? 'bg-rose-50/80 border-rose-300 ring-1 ring-rose-300' : 'bg-muted border-border opacity-60'
               }`}>
                 <div className="flex items-center justify-between font-bold text-rose-900">
                   <span className="flex items-center gap-1.5">
@@ -317,9 +300,9 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Placement by School */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-900">Placement by School</h3>
+            <h3 className="text-sm font-semibold text-foreground">Placement by School</h3>
             <span className="text-xs text-slate-400">3 Academic Units</span>
           </div>
 
@@ -329,14 +312,14 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-slate-800">{item.school}</span>
                   <div className="text-right">
-                    <span className="font-bold text-slate-900 mr-2">{item.rate}%</span>
+                    <span className="font-bold text-foreground mr-2">{item.rate}%</span>
                     <span className="text-slate-400">({item.placed}/{item.total} placed)</span>
                   </div>
                 </div>
 
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-slate-900 rounded-full" 
+                    className="h-full bg-primary rounded-full" 
                     style={{ width: `${item.rate}%` }}
                   />
                 </div>
@@ -346,21 +329,21 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
         </div>
 
         {/* Placement by Program */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-900">Placement by Program</h3>
+            <h3 className="text-sm font-semibold text-foreground">Placement by Program</h3>
             <span className="text-xs text-slate-400">Top Degree Tracks</span>
           </div>
 
-          <div className="space-y-3 divide-y divide-slate-100 text-xs">
+          <div className="space-y-3 divide-y divide-border/70 text-xs">
             {programPerformance.map(prog => (
               <div key={prog.program} className="pt-3 first:pt-0 flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-slate-900">{prog.program}</div>
+                  <div className="font-semibold text-foreground">{prog.program}</div>
                   <div className="text-[11px] text-slate-400">{prog.placed} placed of {prog.total} registered</div>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-bold text-slate-900">{prog.rate}%</span>
+                  <span className="text-sm font-bold text-foreground">{prog.rate}%</span>
                   <span className="text-[10px] text-emerald-600 block">≥ Target</span>
                 </div>
               </div>
@@ -374,21 +357,21 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Placement by Batch */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-900">Placement by Batch</h3>
+            <h3 className="text-sm font-semibold text-foreground">Placement by Batch</h3>
             <span className="text-xs text-slate-400">Graduation Cohorts</span>
           </div>
 
           <div className="space-y-3 text-xs">
             {batchPerformance.map(b => (
-              <div key={b.batch} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+              <div key={b.batch} className="p-3 bg-muted rounded-xl border border-border/70 flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-slate-900">{b.batch}</div>
+                  <div className="font-semibold text-foreground">{b.batch}</div>
                   <div className="text-[11px] text-slate-500 mt-0.5">{b.placed} placed out of {b.total} candidates</div>
                 </div>
                 <div className="text-right">
-                  <span className="text-base font-bold text-slate-900">{b.rate}%</span>
+                  <span className="text-base font-bold text-foreground">{b.rate}%</span>
                 </div>
               </div>
             ))}
@@ -396,21 +379,21 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
         </div>
 
         {/* Job Source Performance */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-900">Job Source Performance</h3>
+            <h3 className="text-sm font-semibold text-foreground">Job Source Performance</h3>
             <span className="text-xs text-slate-400">Offer Contribution</span>
           </div>
 
           <div className="space-y-3 text-xs">
             {sourcePerformance.map(src => (
-              <div key={src.source} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+              <div key={src.source} className="p-3 bg-muted rounded-xl border border-border/70 flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-slate-900">{src.source}</div>
+                  <div className="font-semibold text-foreground">{src.source}</div>
                   <div className="text-[11px] text-slate-500 mt-0.5">{src.offers} verified offers generated</div>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-bold text-slate-900">{src.share}</span>
+                  <span className="text-sm font-bold text-foreground">{src.share}</span>
                 </div>
               </div>
             ))}

@@ -208,14 +208,14 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
       {/* Header with Date Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Application Pipeline & External Tracking</h2>
+          <h2 className="text-xl font-semibold text-foreground tracking-tight">Application Pipeline & External Tracking</h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Monitor student external job application progress, decline feedback, and assist students needing placement support.
           </p>
         </div>
 
         {/* Date Filter Segmented Controls (Week / Month / Year) */}
-        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200/80 shadow-2xs self-start sm:self-auto">
+        <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-border shadow-sm self-start sm:self-auto">
           <div className="flex items-center gap-1.5 px-2.5 py-1 text-slate-400">
             <Calendar className="w-3.5 h-3.5 text-slate-500" />
             <span className="text-[11px] font-semibold text-slate-600 hidden md:inline">Timeframe:</span>
@@ -234,8 +234,8 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
               onClick={() => setDateFilter(tab.key)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 dateFilter === tab.key
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-slate-600 hover:text-foreground hover:bg-muted'
               }`}
             >
               {tab.label}
@@ -248,7 +248,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
       {countHelpRequested > 0 && (
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
@@ -265,7 +265,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
               setHelpFilter('HELP_REQUESTED');
               setStageFilter('ALL');
             }}
-            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition-colors shadow-2xs cursor-pointer"
+            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition-colors shadow-sm cursor-pointer"
           >
             View Pending Help Requests
           </button>
@@ -276,8 +276,8 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
         <button
           onClick={() => setStageFilter(stageFilter === 'APPLICATION_STARTED' ? 'ALL' : 'APPLICATION_STARTED')}
-          className={`p-3.5 rounded-xl border text-left transition-all ${
-            stageFilter === 'APPLICATION_STARTED' ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 hover:border-slate-300'
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            stageFilter === 'APPLICATION_STARTED' ? 'bg-primary text-white border-slate-900 shadow-sm' : 'bg-white border-border hover:border-primary/40'
           }`}
         >
           <span className={`text-[10px] uppercase font-bold block ${stageFilter === 'APPLICATION_STARTED' ? 'text-amber-400' : 'text-slate-500'}`}>
@@ -290,8 +290,8 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
 
         <button
           onClick={() => setStageFilter(stageFilter === 'APPLIED' ? 'ALL' : 'APPLIED')}
-          className={`p-3.5 rounded-xl border text-left transition-all ${
-            stageFilter === 'APPLIED' ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 hover:border-slate-300'
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            stageFilter === 'APPLIED' ? 'bg-primary text-white border-slate-900 shadow-sm' : 'bg-white border-border hover:border-primary/40'
           }`}
         >
           <span className={`text-[10px] uppercase font-bold block ${stageFilter === 'APPLIED' ? 'text-blue-400' : 'text-slate-500'}`}>
@@ -304,8 +304,8 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
 
         <button
           onClick={() => setStageFilter(stageFilter === 'NOT_APPLIED' ? 'ALL' : 'NOT_APPLIED')}
-          className={`p-3.5 rounded-xl border text-left transition-all ${
-            stageFilter === 'NOT_APPLIED' ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 hover:border-slate-300'
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            stageFilter === 'NOT_APPLIED' ? 'bg-primary text-white border-slate-900 shadow-sm' : 'bg-white border-border hover:border-primary/40'
           }`}
         >
           <span className={`text-[10px] uppercase font-bold block ${stageFilter === 'NOT_APPLIED' ? 'text-rose-400' : 'text-slate-500'}`}>
@@ -318,11 +318,11 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
 
         <button
           onClick={() => setStageFilter(stageFilter === 'SHORTLISTED' ? 'ALL' : 'SHORTLISTED')}
-          className={`p-3.5 rounded-xl border text-left transition-all ${
-            stageFilter === 'SHORTLISTED' ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 hover:border-slate-300'
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            stageFilter === 'SHORTLISTED' ? 'bg-primary text-white border-slate-900 shadow-sm' : 'bg-white border-border hover:border-primary/40'
           }`}
         >
-          <span className={`text-[10px] uppercase font-bold block ${stageFilter === 'SHORTLISTED' ? 'text-indigo-400' : 'text-slate-500'}`}>
+          <span className={`text-[10px] uppercase font-bold block ${stageFilter === 'SHORTLISTED' ? 'text-blue-400' : 'text-slate-500'}`}>
             Shortlisted
           </span>
           <span className="text-xl font-black mt-1 block">
@@ -332,8 +332,8 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
 
         <button
           onClick={() => setStageFilter(stageFilter === 'INTERVIEW' ? 'ALL' : 'INTERVIEW')}
-          className={`p-3.5 rounded-xl border text-left transition-all ${
-            stageFilter === 'INTERVIEW' ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 hover:border-slate-300'
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            stageFilter === 'INTERVIEW' ? 'bg-primary text-white border-slate-900 shadow-sm' : 'bg-white border-border hover:border-primary/40'
           }`}
         >
           <span className={`text-[10px] uppercase font-bold block ${stageFilter === 'INTERVIEW' ? 'text-purple-400' : 'text-slate-500'}`}>
@@ -346,8 +346,8 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
 
         <button
           onClick={() => setStageFilter(stageFilter === 'OFFER' ? 'ALL' : 'OFFER')}
-          className={`p-3.5 rounded-xl border text-left transition-all ${
-            stageFilter === 'OFFER' ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 hover:border-slate-300'
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            stageFilter === 'OFFER' ? 'bg-primary text-white border-slate-900 shadow-sm' : 'bg-white border-border hover:border-primary/40'
           }`}
         >
           <span className={`text-[10px] uppercase font-bold block ${stageFilter === 'OFFER' ? 'text-emerald-400' : 'text-slate-500'}`}>
@@ -360,8 +360,8 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
 
         <button
           onClick={() => setStageFilter(stageFilter === 'JOINED' ? 'ALL' : 'JOINED')}
-          className={`p-3.5 rounded-xl border text-left transition-all ${
-            stageFilter === 'JOINED' ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 hover:border-slate-300'
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            stageFilter === 'JOINED' ? 'bg-primary text-white border-slate-900 shadow-sm' : 'bg-white border-border hover:border-primary/40'
           }`}
         >
           <span className={`text-[10px] uppercase font-bold block ${stageFilter === 'JOINED' ? 'text-emerald-400' : 'text-slate-500'}`}>
@@ -374,7 +374,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
       </div>
 
       {/* Filters Bar: Search, Stage Filter, Help Filter */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-border shadow-sm">
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative w-full sm:w-64">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -383,14 +383,14 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
               placeholder="Search student, job, reason..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 text-slate-800"
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-slate-800"
             />
           </div>
 
           <select
             value={helpFilter}
             onChange={e => setHelpFilter(e.target.value)}
-            className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
+            className="text-xs bg-muted border border-border rounded-lg px-3 py-1.5 font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary/30"
           >
             <option value="ALL">All Help Statuses</option>
             <option value="HELP_REQUESTED">⚠ Help Requested</option>
@@ -399,7 +399,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
           </select>
 
           {/* Date Filter Dropdown */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700">
+          <div className="flex items-center gap-1.5 bg-muted border border-border rounded-lg px-2.5 py-1.5 text-xs text-slate-700">
             <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <select
               value={dateFilter}
@@ -441,10 +441,10 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
       </div>
 
       {/* Applications Table */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/70 border-b border-slate-200/80 text-slate-500 font-medium">
+            <thead className="bg-muted/60 border-b border-border text-slate-500 font-medium">
               <tr>
                 <th className="py-3 px-4">Student</th>
                 <th className="py-3 px-4">Job Opportunity</th>
@@ -454,7 +454,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border/70">
               {filteredApps.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400 text-xs">
@@ -463,11 +463,11 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                 </tr>
               ) : (
                 filteredApps.map(app => (
-                  <tr key={app.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={app.id} className="hover:bg-muted/60 transition-colors">
                     
                     {/* Candidate */}
                     <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-900">{app.studentName}</div>
+                      <div className="font-bold text-foreground">{app.studentName}</div>
                       <div className="text-[11px] text-slate-400">{app.program} · {app.batch}</div>
                     </td>
 
@@ -483,7 +483,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                         <select
                           value={app.status}
                           onChange={e => handleUpdateStatus(app.id, e.target.value as ApplicationStatus)}
-                          className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-slate-400"
+                          className="text-xs bg-muted border border-border rounded-lg px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-primary/30"
                         >
                           <option value="APPLICATION_STARTED">Application Started</option>
                           <option value="APPLIED">Applied</option>
@@ -544,7 +544,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                         <button
                           onClick={() => setSelectedAppForDetail(app)}
                           title="View application audit details"
-                          className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-600 hover:text-foreground hover:bg-muted rounded-lg transition-colors cursor-pointer"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
@@ -571,7 +571,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                         <button
                           onClick={() => setSelectedAppForInterview(app)}
                           title="Schedule interview round"
-                          className="px-2 py-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                          className="px-2 py-1 text-[11px] font-medium text-slate-600 hover:text-foreground hover:bg-muted rounded transition-colors cursor-pointer"
                         >
                           Interview
                         </button>
@@ -597,24 +597,24 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
 
       {/* DETAIL MODAL / DRAWER */}
       {selectedAppForDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150 p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/40 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-xl border border-border w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-border/70 pb-3">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Application Audit Details</span>
-                <h3 className="text-base font-bold text-slate-900 mt-0.5">{selectedAppForDetail.jobTitle}</h3>
+                <h3 className="text-base font-bold text-foreground mt-0.5">{selectedAppForDetail.jobTitle}</h3>
                 <p className="text-xs text-slate-500">{selectedAppForDetail.company} · Candidate: <strong>{selectedAppForDetail.studentName}</strong></p>
               </div>
               <button
                 onClick={() => setSelectedAppForDetail(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-muted cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 rounded-xl">
+              <div className="grid grid-cols-2 gap-2 p-3 bg-muted rounded-xl">
                 <div>
                   <span className="text-slate-400 block text-[10px] font-bold uppercase">Current Status</span>
                   <div className="mt-1">
@@ -645,7 +645,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                 </div>
               )}
 
-              <div className="p-3 bg-slate-50 rounded-xl space-y-1 text-[11px] text-slate-600">
+              <div className="p-3 bg-muted rounded-xl space-y-1 text-[11px] text-slate-600">
                 {selectedAppForDetail.startedAt && (
                   <div>• Application Started: <strong>{new Date(selectedAppForDetail.startedAt).toLocaleString()}</strong></div>
                 )}
@@ -669,7 +669,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+            <div className="pt-3 border-t border-border/70 flex items-center justify-between">
               {selectedAppForDetail.needsHelp && selectedAppForDetail.helpStatus !== 'RESOLVED' ? (
                 <div className="flex items-center gap-2">
                   <button
@@ -686,7 +686,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
 
               <button
                 onClick={() => setSelectedAppForDetail(null)}
-                className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer"
+                className="px-4 py-1.5 bg-muted hover:bg-secondary text-slate-700 rounded-lg text-xs font-semibold cursor-pointer"
               >
                 Close
               </button>
@@ -697,23 +697,23 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
 
       {/* SCHEDULE INTERVIEW MODAL */}
       {selectedAppForInterview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/30 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl border border-border w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <form onSubmit={handleScheduleInterview}>
-              <div className="p-4 px-5 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-900">Schedule Interview Round</h3>
+              <div className="p-4 px-5 border-b border-border/70 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-foreground">Schedule Interview Round</h3>
                 <button
                   type="button"
                   onClick={() => setSelectedAppForInterview(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-muted"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               <div className="p-5 space-y-3.5 text-xs">
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                  <div className="font-semibold text-slate-900">{selectedAppForInterview.studentName}</div>
+                <div className="p-3 bg-muted rounded-lg border border-border/70">
+                  <div className="font-semibold text-foreground">{selectedAppForInterview.studentName}</div>
                   <div className="text-slate-500 mt-0.5">{selectedAppForInterview.jobTitle} · {selectedAppForInterview.company}</div>
                 </div>
 
@@ -724,7 +724,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                     required
                     value={interviewRoundTitle}
                     onChange={e => setInterviewRoundTitle(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    className="w-full p-2 bg-muted border border-border rounded-lg text-foreground focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
 
@@ -735,23 +735,23 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                     required
                     value={interviewDate}
                     onChange={e => setInterviewDate(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    className="w-full p-2 bg-muted border border-border rounded-lg text-foreground focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
               </div>
 
-              <div className="p-4 px-5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2 text-xs">
+              <div className="p-4 px-5 border-t border-border/70 bg-muted flex items-center justify-end gap-2 text-xs">
                 <button
                   type="button"
                   onClick={() => setSelectedAppForInterview(null)}
-                  className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 font-medium"
+                  className="px-3.5 py-1.5 rounded-lg border border-border text-slate-600 hover:bg-muted font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={scheduling}
-                  className="px-4 py-1.5 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 disabled:opacity-50"
                 >
                   {scheduling ? 'Scheduling...' : 'Confirm Schedule'}
                 </button>
@@ -763,15 +763,15 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
 
       {/* REJECTION FEEDBACK MODAL */}
       {selectedAppForRejection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/30 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl border border-border w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <form onSubmit={handleSubmitRejectionFeedback}>
-              <div className="p-4 px-5 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-900">Mandatory Rejection Feedback</h3>
+              <div className="p-4 px-5 border-b border-border/70 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-foreground">Mandatory Rejection Feedback</h3>
                 <button
                   type="button"
                   onClick={() => setSelectedAppForRejection(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-muted"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -788,7 +788,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                   <select
                     value={rejectionCategory}
                     onChange={e => setRejectionCategory(e.target.value as RejectionCategory)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    className="w-full p-2 bg-muted border border-border rounded-lg text-foreground focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
                   >
                     <option value="TECHNICAL_SKILL_GAP">Technical Skill Gap</option>
                     <option value="COMMUNICATION_GAP">Communication Gap</option>
@@ -806,7 +806,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                     placeholder="Candidate struggled with system design questions..."
                     value={rejectionNotes}
                     onChange={e => setRejectionNotes(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    className="w-full p-2 bg-muted border border-border rounded-lg text-foreground focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
 
@@ -817,16 +817,16 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                     placeholder="e.g. Schedule mock technical interview or coding workshop"
                     value={remedialAction}
                     onChange={e => setRemedialAction(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    className="w-full p-2 bg-muted border border-border rounded-lg text-foreground focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
               </div>
 
-              <div className="p-4 px-5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2 text-xs">
+              <div className="p-4 px-5 border-t border-border/70 bg-muted flex items-center justify-end gap-2 text-xs">
                 <button
                   type="button"
                   onClick={() => setSelectedAppForRejection(null)}
-                  className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 font-medium"
+                  className="px-3.5 py-1.5 rounded-lg border border-border text-slate-600 hover:bg-muted font-medium"
                 >
                   Cancel
                 </button>
