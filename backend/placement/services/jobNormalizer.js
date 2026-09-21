@@ -234,7 +234,10 @@ class JobNormalizer {
     }
     const externalUrl = rawItem.applyUrl || rawItem.jobUrl || rawItem.externalApplicationLink || rawItem.link || rawItem.url || `https://www.google.com/search?q=${encodeURIComponent(company + " " + title + " apply")}`;
     const externalJobId = rawItem.id ? String(rawItem.id) : void 0;
-    const postedDate = rawItem.publishedAt || rawItem.postedDateString || (/* @__PURE__ */ new Date()).toISOString();
+    // postedDate is the board's own posting date; left empty when the board
+    // did not give one, so the listing is never shown as "posted just now"
+    // only because it was scraped now. discoveredAt is when we found it.
+    const postedDate = rawItem.publishedAt || rawItem.postedDateString || void 0;
     const scrapedDate = (/* @__PURE__ */ new Date()).toISOString();
     const normalized = {
       title,
@@ -258,9 +261,10 @@ class JobNormalizer {
       externalUrl,
       deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3).toISOString(),
       status: "ACTIVE",
-      discoveredAt: postedDate,
+      discoveredAt: scrapedDate,
       externalJobId,
-      source: "AI Job Scraper",
+      source: rawItem.sourceBoard ? `${rawItem.sourceBoard} (via Apify)` : "AI Job Scraper",
+      jobBoard: rawItem.sourceBoard || undefined,
       sourceUrl: rawItem.jobUrl || externalUrl,
       postedDate,
       scrapedDate

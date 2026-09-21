@@ -11,4 +11,4 @@ Do not develop here; changes have to be hand-ported to the monorepo.
 - Eligibility: mentors mark students in SHO App → Placement Eligibility (`backend/routes/placementEligibility.js`),
   synced instantly into `placement_students`.
 
-Snapshot of SHO-PRODUCTION `main` at commit b80c026.
+Snapshot of SHO-PRODUCTION `main` at commit b4e2850 (2026-09-21).

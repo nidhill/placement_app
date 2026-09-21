@@ -74,7 +74,6 @@ export const Header: React.FC<HeaderProps> = ({
       case 'mgmt_batches': return 'Batch Trajectory';
       case 'mgmt_sources': return 'Corporate Acquisition';
       case 'analytics': return 'Placement Analytics';
-      case 'reports': return 'Executive Reports';
       case 'users': return 'User Management';
       case 'integrations': return 'System Integrations';
       case 'audit_logs': return 'Audit Logs';

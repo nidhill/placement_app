@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LmsSyncConfig, ApifyScraperConfig, ApifyConnectionStatus, AtsSyncConfig, AtsConnectionStatus } from '../../types.ts';
 import { api } from '../../lib/api.ts';
+import { JobBoardsPanel } from './JobBoardsPanel.tsx';
 import { 
   Database, 
   Bot, 
@@ -528,6 +529,8 @@ export const IntegrationsView: React.FC = () => {
         </div>
 
       </div>
+
+      <JobBoardsPanel canRun />
 
     </div>
   );

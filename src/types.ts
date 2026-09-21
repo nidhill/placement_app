@@ -72,6 +72,7 @@ export interface User {
   fullName: string;
   role: UserRole;
   department?: string;
+  managedHere?: boolean;      // account created in the placement tool (SHO App admins are not)
   avatarUrl?: string;
   isActive: boolean;
   createdAt: string;
@@ -181,6 +182,7 @@ export interface ApifyFetchResult {
   newIngested: number;
   duplicatesCount: number;
   invalidCount: number;
+  sources?: Array<{ source: string; label: string; ok: boolean; received?: number; usable?: number; error?: string; ms: number }>;
   newJobTitles: string[];
   sampleJob?: Partial<JobListing>;
 }
@@ -366,6 +368,12 @@ export interface ApifyScraperConfig {
   actorId: string;
   apiKey: string;
   targetBoards: string[];
+  // Multi-board sourcing (LinkedIn / Indeed / Glassdoor / Naukri)
+  boards?: string[];
+  searchTerms?: string[];
+  locations?: string[];
+  maxPerSource?: number;
+  hoursOld?: number;
   scheduleCron: string;
   isEnabled: boolean;
   lastRunTimestamp?: string;

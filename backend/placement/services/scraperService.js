@@ -244,13 +244,30 @@ class ApifyScraperService {
     if (!token) {
       throw new Error("APIFY_API_TOKEN is not configured in server environment.");
     }
-    if (!configuredActorId) {
-      throw new Error("Apify Actor is not configured.");
-    }
     let rawItems = [];
     let resolvedActorTitle = "LinkedIn Jobs Scraper";
     let pagesFetched = 0;
+    let sourceReport = [];
+    // Multi-board run (LinkedIn / Indeed / Glassdoor / Naukri) is the normal
+    // path; the single configured actor's last dataset is the fallback for
+    // installs that still rely on a manually run actor.
+    const { runSources } = require("./apifySources");
+    const cfg = await import_store.dbStore.getApifyConfig();
+    const boards = Array.isArray(cfg.boards) ? cfg.boards : undefined;
+    const useSources = options?.legacy !== true && (boards === undefined || boards.length > 0);
+    if (useSources) {
+      const run = await runSources(token, { searchTerms: cfg.searchTerms, locations: cfg.locations, boards: cfg.boards, maxPerSource: options?.limit || cfg.maxPerSource, hoursOld: cfg.hoursOld });
+      rawItems = run.items;
+      sourceReport = run.report;
+      resolvedActorTitle = run.report.filter(r => r.ok).map(r => r.label).join(' + ') || 'Apify job boards';
+      if (!run.report.some(r => r.ok)) {
+        throw new Error('No job board could be fetched: ' + run.report.map(r => `${r.label}: ${r.error}`).join(' | '));
+      }
+    } else if (!configuredActorId) {
+      throw new Error("Apify Actor is not configured.");
+    }
     try {
+      if (useSources) throw null;   // items already collected above
       const resolved = await this.resolveActorAndDataset(token, configuredActorId);
       resolvedActorTitle = resolved.actorTitle;
       const fetchLimit = options?.limit || 50;
@@ -278,7 +295,7 @@ class ApifyScraperService {
         }
       }
     } catch (fetchErr) {
-      throw new Error(`The Apify job scraper could not be reached: ${fetchErr.message}`);
+      if (fetchErr !== null) throw new Error(`The Apify job scraper could not be reached: ${fetchErr.message}`);
     }
     const totalReceived = rawItems.length;
     let activeCount = 0;
@@ -385,7 +402,8 @@ class ApifyScraperService {
       duplicatesCount,
       invalidCount,
       newJobTitles,
-      sampleJob
+      sampleJob,
+      sources: sourceReport
     };
   }
   /**

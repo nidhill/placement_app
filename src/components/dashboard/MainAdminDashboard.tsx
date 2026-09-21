@@ -392,10 +392,10 @@ export const MainAdminDashboard: React.FC<MainAdminDashboardProps> = ({
 
           <div className="pt-3 border-t border-border/70">
             <button
-              onClick={() => onNavigate('reports')}
+              onClick={() => onNavigate('analytics')}
               className="w-full py-1.5 text-center text-xs font-semibold text-slate-600 hover:text-foreground transition-colors"
             >
-              View Full Academic Audit Report →
+              View Placement Analytics →
             </button>
           </div>
         </div>

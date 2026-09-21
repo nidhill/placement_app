@@ -131,8 +131,6 @@ export default function App() {
         return { title: 'Interviews', subtitle: 'Scheduled Evaluation Rounds' };
       case 'analytics':
         return { title: 'Analytics', subtitle: 'Institutional KPIs & Placement Intelligence' };
-      case 'reports':
-        return { title: 'Reports', subtitle: 'Executive Placement Briefings' };
       case 'users':
         return { title: 'User Management', subtitle: 'Staff Accounts & Role Privileges' };
       case 'integrations':
@@ -266,7 +264,7 @@ export default function App() {
                 <InterviewsSchedule onRefreshData={() => setRefreshTrigger(prev => prev + 1)} />
               )}
 
-              {(activeNav === 'analytics' || activeNav === 'reports') && (
+              {activeNav === 'analytics' && (
                 <AnalyticsView onRefreshData={() => setRefreshTrigger(prev => prev + 1)} />
               )}
 

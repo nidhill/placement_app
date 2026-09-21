@@ -689,7 +689,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                       <div className="flex items-center gap-1.5 text-slate-600">
                         <Clock className="w-3 h-3 text-slate-400" />
                         <span className="text-[11px] font-medium">
-                          {timeAgo(job.postedDate || job.discoveredAt || job.createdAt)}
+                          {job.postedDate ? timeAgo(job.postedDate) : `Found ${timeAgo(job.discoveredAt || job.createdAt)}`}
                         </span>
                       </div>
                       <div className="text-[10px] text-slate-400 mt-0.5">
@@ -944,7 +944,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                 </span>
                 <span className="text-slate-400 flex items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  {timeAgo(selectedJob.postedDate || selectedJob.discoveredAt || selectedJob.createdAt)}
+                  {selectedJob.postedDate ? `Posted ${timeAgo(selectedJob.postedDate)}` : `Found ${timeAgo(selectedJob.discoveredAt || selectedJob.createdAt)}`}
                 </span>
               </div>
 

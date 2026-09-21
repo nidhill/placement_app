@@ -15,25 +15,34 @@ const { TechJobClassifier } = require('./services/techClassifier');
 const { DesignationNormalizer } = require('./services/designationNormalizer');
 const { IndiaLocationFilter } = require('./services/indiaLocationFilter');
 
-// SHO role → placement role.
-//   admin           → MAIN_ADMIN        governance: users, overrides, settings
-//   placement_team  → PLACEMENT_OFFICER day-to-day: jobs, applications, interviews, feedback, syncs
-//   leadership/ceo  → MANAGEMENT        read-only dashboards & analytics
-//   student         → STUDENT           own portal, once a mentor approved them
-// Mentors are not placement users: they decide eligibility in the SHO App.
+// SHO role → placement role. The tool's own staff roles live on the shared
+// users collection with a placement_ prefix, so they can log in nowhere
+// else; the SHO App admin is also an admin here.
+//   admin / placement_admin   → MAIN_ADMIN        users, overrides, settings
+//   placement_team            → PLACEMENT_OFFICER jobs, applications, interviews, syncs
+//   placement_management      → MANAGEMENT        read-only dashboards & analytics
+//   student                   → STUDENT           own portal, once a mentor approved them
+// Other SHO App staff (leadership, SHOs, mentors, academic leads) are not
+// placement users — mentors decide eligibility in the SHO App.
 const ROLE_MAP = {
   admin: 'MAIN_ADMIN',
+  placement_admin: 'MAIN_ADMIN',
   placement_team: 'PLACEMENT_OFFICER',
-  leadership: 'MANAGEMENT',
-  ceo_haca: 'MANAGEMENT',
+  placement_management: 'MANAGEMENT',
   student: 'STUDENT',
 };
-const REVERSE_ROLE_MAP = { MAIN_ADMIN: 'admin', PLACEMENT_OFFICER: 'placement_team', MANAGEMENT: 'leadership', STUDENT: 'student' };
+const REVERSE_ROLE_MAP = { MAIN_ADMIN: 'placement_admin', PLACEMENT_OFFICER: 'placement_team', MANAGEMENT: 'placement_management', STUDENT: 'student' };
 
 const DEFAULT_APIFY = {
   actorId: process.env.APIFY_ACTOR_ID || '',
   apiKey: '',
-  targetBoards: ['LinkedIn Jobs India', 'Naukri', 'Indeed India', 'Instahyre'],
+  targetBoards: ['LinkedIn', 'Indeed', 'Glassdoor', 'Naukri'],
+  // Multi-board sourcing (services/apifySources.js)
+  boards: ['linkedin', 'indeed', 'glassdoor', 'naukri'],
+  searchTerms: ['Frontend Developer', 'Full Stack Developer', 'React Developer', 'Python Developer', 'Data Analyst', 'MERN Stack Developer', 'UI UX Designer', 'Graphic Designer', 'Video Editor', 'Motion Graphics', 'Digital Marketing', 'Performance Marketing', 'SEO Specialist', 'Social Media Marketing', 'Content Writer', 'Accountant'],
+  locations: ['India'],
+  maxPerSource: 100,
+  hoursOld: 24,
   scheduleCron: '0 4 * * *',
   isEnabled: true,
   lastRunTimestamp: null,
@@ -66,6 +75,7 @@ function toPlacementUser(u) {
     department: u.school || u.department || 'HACA',
     isActive: u.isActive !== false,
     createdAt: u.createdAt,
+    managedHere: String(u.role || '').startsWith('placement_'),   // created in this tool (vs the SHO App admin)
   };
 }
 
@@ -73,10 +83,20 @@ class PlacementStore {
   // ==========================================
   // 1. USERS (SHO App accounts)
   // ==========================================
+  // Admins, Placement Team accounts, and the students a mentor has made
+  // placement-eligible (from placement_students — they are the tool's users).
   async getAllUsers() {
-    const users = await User.find({ role: { $in: Object.keys(ROLE_MAP).filter(r => r !== 'student') } })
+    const staff = await User.find({ role: { $in: ['admin', 'placement_admin', 'placement_team', 'placement_management'] } })
       .select('name email role school isActive createdAt').lean();
-    return users.map(toPlacementUser);
+    const students = await PlacementStudent.find({}).select('id shoStudentId fullName email school batch eligibilityStatus createdAt').lean();
+    return [
+      ...staff.map(toPlacementUser),
+      ...students.map(st => ({
+        id: st.id, email: st.email, fullName: st.fullName, role: 'STUDENT',
+        department: [st.school, st.batch].filter(Boolean).join(' · ') || 'Student',
+        isActive: st.eligibilityStatus === 'ELIGIBLE' || st.eligibilityStatus === 'ADMIN_OVERRIDE', createdAt: st.createdAt,
+      })),
+    ];
   }
   async getUserById(id) {
     if (!mongoose.isValidObjectId(id)) return undefined;
@@ -88,7 +108,7 @@ class PlacementStore {
     return u && ROLE_MAP[u.role] ? toPlacementUser(u) : undefined;
   }
   async getMainAdminCount() {
-    return User.countDocuments({ role: 'admin', isActive: true });
+    return User.countDocuments({ role: { $in: ['admin', 'placement_admin'] }, isActive: true });
   }
 
   // Creates a SHO App account. A random password is set; the person gets
@@ -96,8 +116,8 @@ class PlacementStore {
   async provisionUser(userData, actor) {
     const email = String(userData.email).trim().toLowerCase();
     if (await User.findOne({ email })) throw new Error(`User with email "${userData.email}" already exists.`);
-    if (userData.role === 'MAIN_ADMIN') throw new Error('Admins are created in the SHO App, not here.');
-    const shoRole = REVERSE_ROLE_MAP[userData.role] || 'placement_team';
+    const shoRole = REVERSE_ROLE_MAP[userData.role];
+    if (!shoRole || shoRole === 'student') throw new Error('Role must be Admin, Placement Team or Management. Students join automatically once a mentor marks them placement-eligible.');
     const bcrypt = require('bcryptjs');
     const password = await bcrypt.hash(require('crypto').randomBytes(18).toString('hex'), 10);
     const u = await User.create({ name: userData.fullName, email, role: shoRole, password, isActive: true, school: userData.department || 'HACA' });
@@ -118,9 +138,8 @@ class PlacementStore {
     const u = await User.findById(id);
     if (!u || !ROLE_MAP[u.role]) throw new Error('User not found');
     if (String(u._id) === String(actor.id)) throw new Error(`You cannot ${verb} your own account.`);
-    if (u.role !== 'placement_team') {
-      const label = u.role === 'admin' ? 'an Admin' : u.role === 'ceo_haca' ? 'the CEO' : 'a Leadership';
-      throw new Error(`This is ${label} account from the SHO App. To ${verb} it, use SHO App → Users.`);
+    if (!u.role.startsWith('placement_')) {
+      throw new Error(`This is a SHO App admin account. To ${verb} it, use SHO App → Users.`);
     }
     return u;
   }
@@ -153,12 +172,12 @@ class PlacementStore {
   // Placement Team ⇄ Management. The target maps to a SHO role, so a
   // Management user becomes SHO "leadership" — the admin confirms that in the UI.
   async changeUserRole(id, role, actor) {
-    if (!['PLACEMENT_OFFICER', 'MANAGEMENT'].includes(role)) throw new Error('Role must be PLACEMENT_OFFICER or MANAGEMENT.');
+    if (!['MAIN_ADMIN', 'PLACEMENT_OFFICER', 'MANAGEMENT'].includes(role)) throw new Error('Role must be Admin, Placement Team or Management.');
     if (!mongoose.isValidObjectId(id)) throw new Error('User not found');
     const u = await User.findById(id);
     if (!u || !ROLE_MAP[u.role]) throw new Error('User not found');
     if (String(u._id) === String(actor.id)) throw new Error('You cannot change your own role.');
-    if (u.role === 'admin' || u.role === 'ceo_haca') throw new Error(`This ${u.role === 'admin' ? 'Admin' : 'CEO'} account's role is managed in SHO App → Users.`);
+    if (!u.role.startsWith('placement_')) throw new Error('A SHO App admin account is managed in SHO App → Users.');
     const from = ROLE_MAP[u.role];
     const shoRole = REVERSE_ROLE_MAP[role];
     if (u.role === shoRole) return toPlacementUser(u);
@@ -298,9 +317,20 @@ class PlacementStore {
     const externalUrl = real(job.externalUrl) || real(job.applicationUrl) || real(job.sourceUrl) || real(job.url);
     return { ...job, externalUrl, applicationUrl: real(job.applicationUrl) || externalUrl };
   }
+  // Scraped listings are shown for 30 days from the day they were posted
+  // (or found), then hidden and removed by expireOldJobs(); hand-posted
+  // jobs follow their own deadline.
+  static jobAgeCutoff() { return new Date(Date.now() - 30 * 24 * 3600 * 1000); }
+  static isFresh(job) {
+    if (job.status && job.status !== 'ACTIVE') return false;
+    if (!['AI_JOB_SCRAPER', 'ATS_JOB_API'].includes(job.sourceChannel)) return true;
+    const seen = new Date(job.postedDate || job.discoveredAt || job.createdAt || 0);
+    return seen >= PlacementStore.jobAgeCutoff();
+  }
   async getAllJobs() {
     const jobs = (await PlacementJob.find().lean()).map(strip);
     return jobs
+      .filter(job => PlacementStore.isFresh(job))
       .filter(job => job.countryCode === 'IN' || IndiaLocationFilter.evaluateLocation({ location: job.location, countryCode: job.countryCode }).isIndia)
       .map(j => this.ensureJobUrls(j))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -311,6 +341,20 @@ class PlacementStore {
     const locCheck = IndiaLocationFilter.evaluateLocation({ location: job.location, countryCode: job.countryCode });
     if (!locCheck.isIndia && job.countryCode !== 'IN') return undefined;
     return this.ensureJobUrls(strip(job));
+  }
+  // Nightly: scraped jobs past 30 days are deleted; the few that carry an
+  // application are kept for the student's history but marked EXPIRED
+  // (hidden from every list).
+  async expireOldJobs() {
+    const cutoff = PlacementStore.jobAgeCutoff();
+    const old = await PlacementJob.find({ sourceChannel: { $in: ['AI_JOB_SCRAPER', 'ATS_JOB_API'] }, $or: [{ postedDate: { $lt: cutoff.toISOString() } }, { postedDate: { $exists: false }, discoveredAt: { $lt: cutoff.toISOString() } }, { postedDate: { $exists: false }, discoveredAt: { $exists: false }, createdAt: { $lt: cutoff.toISOString() } }] }).select('id').lean();
+    if (!old.length) return { deleted: 0, expired: 0 };
+    const ids = old.map(j => j.id);
+    const withApps = new Set(await PlacementApplication.distinct('jobId', { jobId: { $in: ids } }));
+    const toDelete = ids.filter(id => !withApps.has(id));
+    const del = toDelete.length ? await PlacementJob.deleteMany({ id: { $in: toDelete } }) : { deletedCount: 0 };
+    const exp = withApps.size ? await PlacementJob.updateMany({ id: { $in: [...withApps] }, status: 'ACTIVE' }, { $set: { status: 'EXPIRED', updatedAt: new Date().toISOString() } }) : { modifiedCount: 0 };
+    return { deleted: del.deletedCount, expired: exp.modifiedCount };
   }
   async removeAllDemoJobs() {
     const r = await PlacementJob.deleteMany({ $or: [{ sourceChannel: { $nin: ['AI_JOB_SCRAPER', 'ATS_JOB_API'] } }, { id: /^job-haca-/ }] });

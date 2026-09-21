@@ -1,5 +1,5 @@
 // Placement auth: one Bearer token, two issuers.
-//   SHO App staff token  { userId, role }  → admin / placement_team / leadership / ceo_haca
+//   SHO App staff token  { userId, role }  → admin / placement_team
 //   LMS student token    { id, role: 'student', sessionId? } → the student's placement profile
 // Produces req.actor = { id, name, email, role: MAIN_ADMIN|PLACEMENT_OFFICER|MANAGEMENT|STUDENT, studentProfileId? }
 // — the shape the ported placement routes expect.

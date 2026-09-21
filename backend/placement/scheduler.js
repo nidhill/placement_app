@@ -16,6 +16,11 @@ async function runNightlySync() {
     console.log(`${tag} students: +${r.syncedCount} new, ${r.updatedCount} refreshed, ${r.removedCount} removed`);
   } catch (e) { console.error(`${tag} student sync failed:`, e.message); }
   try {
+    const { dbStore } = require('./store');
+    const r = await dbStore.expireOldJobs();
+    console.log(`${tag} old jobs: ${r.deleted} deleted, ${r.expired} expired (>30 days)`);
+  } catch (e) { console.error(`${tag} job cleanup failed:`, e.message); }
+  try {
     const { ApifyScraperService } = require('./services/scraperService');
     const r = await ApifyScraperService.fetchAndIngestJobs(ACTOR, { limit: 50 });
     console.log(`${tag} apify: +${r.newIngested} jobs (${r.duplicatesCount} dupes)`);

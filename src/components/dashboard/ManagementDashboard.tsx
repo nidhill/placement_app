@@ -12,7 +12,6 @@ import {
   Layers, 
   FolderTree, 
   Share2, 
-  FileSpreadsheet,
   CheckCircle2,
   AlertTriangle,
   XCircle,
@@ -116,11 +115,11 @@ export const ManagementDashboard: React.FC<ManagementDashboardProps> = ({ onNavi
           </div>
 
           <button
-            onClick={() => onNavigate('reports')}
+            onClick={() => onNavigate('analytics')}
             className="px-3 py-1.5 bg-white border border-border text-slate-700 hover:bg-muted rounded-2xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
-            <span>Export Board Report</span>
+            <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
+            <span>Placement Analytics</span>
           </button>
         </div>
       </div>

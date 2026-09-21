@@ -267,7 +267,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onRefreshData }) => 
             <div>
               <h3 className="font-bold text-foreground text-base">Provision Staff Account</h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Admins create accounts for the Placement Team and Management.
+                Admins create Admin, Placement Team and Management accounts here.
               </p>
             </div>
 
@@ -303,9 +303,9 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onRefreshData }) => 
                   onChange={e => setNewRole(e.target.value as UserRole)}
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
                 >
+                  <option value="MAIN_ADMIN">Admin</option>
                   <option value="PLACEMENT_OFFICER">Placement Team</option>
-                  <option value="MANAGEMENT">Executive Management</option>
-                  <option value="MAIN_ADMIN" disabled>Admin (created in the SHO App)</option>
+                  <option value="MANAGEMENT">Management</option>
                 </select>
                 <p className="text-[11px] text-amber-700 mt-1 font-medium">
                   * Note: "Main Admin" role cannot be selected. Only 1 root admin account can exist.

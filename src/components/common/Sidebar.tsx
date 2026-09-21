@@ -7,7 +7,6 @@ import {
   FileCheck2, 
   Calendar, 
   BarChart3, 
-  FileSpreadsheet, 
   UserCog, 
   Sliders, 
   History, 
@@ -35,7 +34,6 @@ export type NavigationItem =
   | 'applications'
   | 'interviews'
   | 'analytics'
-  | 'reports'
   | 'profile'
   // Main Admin Administration
   | 'users'
@@ -129,7 +127,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'applications', label: 'Applications', icon: FileCheck2 },
     { id: 'interviews', label: 'Interviews', icon: Calendar },
     { id: 'analytics', label: 'Placement Analytics', icon: BarChart3 },
-    { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
   ];
 
   const adminAdminNav: NavLinkConfig[] = [
@@ -148,7 +145,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'candidate_matching', label: 'Candidate Matching', icon: UserCheck },
     { id: 'job_sources', label: 'Job Sources', icon: Share2 },
     { id: 'follow_ups', label: 'Follow-ups', icon: Clock },
-    { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
+    { id: 'analytics', label: 'Placement Analytics', icon: BarChart3 },
   ];
 
   const managementNav: NavLinkConfig[] = [
@@ -158,7 +155,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'mgmt_programs', label: 'Programs', icon: Layers },
     { id: 'mgmt_batches', label: 'Batches', icon: FolderTree },
     { id: 'mgmt_sources', label: 'Job Sources', icon: Share2 },
-    { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
   ];
 
   const studentNav: NavLinkConfig[] = [
