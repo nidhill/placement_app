@@ -4,6 +4,7 @@ import { api } from '../../lib/api.ts';
 import { plainText, applyLink } from '../../lib/text.ts';
 import { ApplicationStatusBadge, HelpStatusBadge } from '../common/StatusBadge.tsx';
 import { NavigationItem } from '../common/Sidebar.tsx';
+import { AIResumeAgent } from '../resume/AIResumeAgent.tsx';
 import { 
   Lock, 
   CheckCircle2, 
@@ -39,8 +40,12 @@ import {
   FileCheck,
   RefreshCw,
   Paperclip,
-  HelpCircle
+  HelpCircle,
+  Wand2
 } from 'lucide-react';
+import { extractResumeDataFromFile } from '../resume/aiService.ts';
+import { loadAllVersions } from '../resume/resumeStore.ts';
+import { ResumeData } from '../resume/types.ts';
 
 const DECLINE_REASON_OPTIONS: { value: ApplicationDeclineReason; label: string }[] = [
   { value: 'NOT_INTERESTED', label: '1. Not interested in this role or company' },
@@ -102,10 +107,29 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   // Resume / CV File upload state
   const [isDragging, setIsDragging] = useState(false);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [isExtractingResume, setIsExtractingResume] = useState(false);
   const [resumeUploadError, setResumeUploadError] = useState<string | null>(null);
   const [resumeUploadSuccess, setResumeUploadSuccess] = useState<string | null>(null);
   const [previewResumeModalOpen, setPreviewResumeModalOpen] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Extracted AI Resume Data
+  const [extractedResume, setExtractedResume] = useState<ResumeData | null>(null);
+
+  useEffect(() => {
+    if (currentStudentId) {
+      try {
+        const extracted = localStorage.getItem(`extracted_resume_${currentStudentId}`);
+        if (extracted) {
+          setExtractedResume(JSON.parse(extracted));
+        } else {
+          setExtractedResume(null);
+        }
+      } catch (e) {
+        console.error('Failed to parse extracted resume:', e);
+      }
+    }
+  }, [currentStudentId, activeTab, resumeUploadSuccess]); // Re-run when view changes or upload completes
 
   // Job search, sub-tabs and detail modal
   const [jobSearch, setJobSearch] = useState('');
@@ -388,8 +412,24 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             fileType: file.type || 'application/pdf',
             dataUrl
           });
-          setResumeUploadSuccess(`"${file.name}" uploaded and verified successfully!`);
-          setTimeout(() => setResumeUploadSuccess(null), 4000);
+          
+          // AI Extraction
+          try {
+            setIsExtractingResume(true);
+            const base64Data = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+            const mimeType = file.type || 'application/pdf';
+            const extractedData = await extractResumeDataFromFile(base64Data, mimeType);
+            localStorage.setItem(`extracted_resume_${currentStudentId}`, JSON.stringify(extractedData));
+            setResumeUploadSuccess(`"${file.name}" uploaded and AI analyzed successfully! Job matches have been updated.`);
+          } catch (aiErr: any) {
+            console.error('AI Extraction error:', aiErr);
+            setResumeUploadSuccess(null); // Clear success toast
+            setResumeUploadError(`AI Extraction failed: ${aiErr.message || 'Please check your Groq API key and model.'}`);
+          } finally {
+            setIsExtractingResume(false);
+          }
+
+          setTimeout(() => setResumeUploadSuccess(null), 5000);
           await loadData();
           if (onRefreshData) onRefreshData();
         } catch (err: any) {
@@ -991,7 +1031,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       {(currentView === 'student_profile' || currentView === 'profile' || currentView === 'student_profile_details') && profile && (
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
-            <h2 className="text-base font-bold text-foreground mb-4">Student Profile & Academic Records</h2>
+            <h2 className="text-base font-bold text-foreground mb-4">Student Profile</h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="p-3 bg-muted rounded-xl">
@@ -1010,30 +1050,23 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Program & Batch</span>
                 <span className="text-foreground font-semibold mt-0.5 block">{profile.program} ({profile.batch})</span>
               </div>
-              <div className="p-3 bg-muted rounded-xl">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Attendance</span>
-                <span className="text-foreground font-bold text-sm mt-0.5 block">{profile.academic.attendancePercentage}%</span>
-              </div>
-              <div className="p-3 bg-muted rounded-xl">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Academic Score (GPA)</span>
-                <span className="text-foreground font-bold text-sm mt-0.5 block">{profile.academic.scores.gpaOrPercentage}</span>
-              </div>
             </div>
 
             {/* Skills */}
             <div className="mt-5 pt-4 border-t border-border/70">
               <span className="text-xs font-semibold text-slate-700 block mb-2">Verified Technical Skills:</span>
               <div className="flex flex-wrap gap-1.5">
-                {(profile.academic?.skills || (profile as any).skills || []).map(s => (
+                {(profile.academic?.skills || (profile as any).skills || []).map((s: string) => (
                   <span key={s} className="px-2.5 py-1 bg-muted text-slate-800 rounded-lg text-xs font-medium">
                     {s}
                   </span>
                 ))}
               </div>
             </div>
+
           </div>
 
-          {/* Curriculum Vitae (CV) & Resume File Upload Section */}
+          {/* Resume Upload Section */}
           <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
               <div>
@@ -1041,7 +1074,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
                     <FileText className="w-4 h-4" />
                   </div>
-                  <h3 className="text-base font-bold text-foreground">Curriculum Vitae (CV) & Resume Document</h3>
+                  <h3 className="text-base font-bold text-foreground">Resume upload</h3>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/80">
                     Placement Credential
                   </span>
@@ -1051,12 +1084,22 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 </p>
               </div>
 
-              {(profile.resumeFileName || profile.resumeDataUrl) && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 self-start">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Verified CV On File</span>
-                </div>
-              )}
+              <div className="flex flex-col gap-2 items-end sm:items-end sm:justify-start">
+                {(profile.resumeFileName || profile.resumeDataUrl) && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 self-start sm:self-end">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Verified CV On File</span>
+                  </div>
+                )}
+                <button 
+                  type="button" 
+                  onClick={() => onNavigate('student_resume_builder')}
+                  className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 rounded-lg border border-slate-200 transition-colors whitespace-nowrap self-start sm:self-end flex items-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4 text-violet-600" />
+                  Don't have a resume?
+                </button>
+              </div>
             </div>
 
             {/* Error Banner */}
@@ -1147,17 +1190,17 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploadingResume}
+                    disabled={isUploadingResume || isExtractingResume}
                     className="px-3 py-1.5 bg-primary text-white hover:bg-primary/90 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isUploadingResume ? 'animate-spin text-amber-400' : ''}`} />
-                    <span>{isUploadingResume ? 'Uploading...' : 'Replace File'}</span>
+                    <RefreshCw className={`w-3.5 h-3.5 ${(isUploadingResume || isExtractingResume) ? 'animate-spin text-amber-400' : ''}`} />
+                    <span>{isUploadingResume ? 'Uploading...' : isExtractingResume ? 'Analyzing...' : 'Replace File'}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleDeleteResume}
-                    disabled={isUploadingResume}
+                    disabled={isUploadingResume || isExtractingResume}
                     className="p-1.5 text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg transition-colors cursor-pointer"
                     title="Remove uploaded CV document"
                   >
@@ -1167,71 +1210,161 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               </div>
             ) : null}
 
-            {/* Drag and Drop Zone */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`p-6 border-2 border-dashed rounded-xl text-center cursor-pointer transition-all ${
-                isDragging 
-                  ? 'border-blue-500 bg-blue-50/70 text-blue-950 scale-[1.005]' 
-                  : 'border-border hover:border-primary/50 bg-muted/60 hover:bg-muted'
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={e => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    handleFileSelected(e.target.files[0]);
-                    e.target.value = '';
-                  }
-                }}
-              />
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={e => {
+                if (e.target.files && e.target.files.length > 0) {
+                  handleFileSelected(e.target.files[0]);
+                  e.target.value = '';
+                }
+              }}
+            />
 
-              <div className="mx-auto w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-slate-600 mb-3 shadow-sm">
-                {isUploadingResume ? (
-                  <RefreshCw className="w-6 h-6 text-blue-600 animate-spin" />
+            {/* Drag and Drop Zone (Only show if no resume exists) */}
+            {!(profile.resumeFileName || profile.resumeDataUrl) && (
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`p-6 border-2 border-dashed rounded-xl text-center cursor-pointer transition-all ${
+                  isDragging 
+                    ? 'border-blue-500 bg-blue-50/70 text-blue-950 scale-[1.005]' 
+                    : 'border-border hover:border-primary/50 bg-muted/60 hover:bg-muted'
+                }`}
+              >
+                <div className="mx-auto w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-slate-600 mb-3 shadow-sm">
+                  {(isUploadingResume || isExtractingResume) ? (
+                    isExtractingResume ? <Wand2 className="w-6 h-6 text-violet-600 animate-pulse" /> : <RefreshCw className="w-6 h-6 text-blue-600 animate-spin" />
+                  ) : (
+                    <UploadCloud className="w-6 h-6 text-blue-600" />
+                  )}
+                </div>
+
+                {isExtractingResume ? (
+                  <div>
+                    <p className="text-xs font-bold text-violet-700">AI is analyzing your resume...</p>
+                    <p className="text-[11px] text-violet-600/70 mt-0.5">Extracting skills and experience for smart job matching</p>
+                  </div>
+                ) : isUploadingResume ? (
+                  <div>
+                    <p className="text-xs font-bold text-foreground">Processing and uploading your CV file...</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Encrypting and attaching document to student profile</p>
+                  </div>
+                ) : isDragging ? (
+                  <div>
+                    <p className="text-xs font-bold text-blue-900">Release document to upload</p>
+                    <p className="text-[11px] text-blue-700 mt-0.5">PDF or Word document format (.pdf, .doc, .docx)</p>
+                  </div>
                 ) : (
-                  <UploadCloud className="w-6 h-6 text-blue-600" />
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">
+                      Drag and drop your CV / Resume here, or click to browse files
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Accepts <strong>PDF (.pdf)</strong> and <strong>Word (.doc, .docx)</strong> up to 15MB
+                    </p>
+                    <div className="mt-3">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-border shadow-sm rounded-lg text-xs font-semibold text-slate-700 hover:bg-muted transition-colors">
+                        <Paperclip className="w-3.5 h-3.5 text-slate-400" /> Choose File from Computer
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Extracted Resume Details inside Upload Card */}
+            {extractedResume && (
+              <div className="mt-6 pt-6 border-t border-border">
+              <div className="flex items-center gap-2 mb-4">
+                <Wand2 className="w-5 h-5 text-violet-600" />
+                <h3 className="text-base font-bold text-foreground">Extracted CV Details</h3>
+              </div>
+
+              {/* Personal Info & Target Role */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 pb-5 border-b border-border/70 text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold mb-1">Personal Information</span>
+                  <div className="space-y-1 text-slate-700">
+                    <p><strong className="text-slate-800">Name:</strong> {extractedResume.personal?.fullName || 'N/A'}</p>
+                    <p><strong className="text-slate-800">Email:</strong> {extractedResume.personal?.email || 'N/A'}</p>
+                    <p><strong className="text-slate-800">Phone:</strong> {extractedResume.personal?.phone || 'N/A'}</p>
+                    <p><strong className="text-slate-800">Location:</strong> {extractedResume.personal?.location || 'N/A'}</p>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold mb-1">Professional Target</span>
+                  <div className="space-y-1 text-slate-700">
+                    <p><strong className="text-slate-800">Target Role:</strong> {extractedResume.personal?.targetRole || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary */}
+              {extractedResume.summary && (
+                <div className="mb-5 pb-5 border-b border-border/70">
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold mb-1">Professional Summary</span>
+                  <p className="text-xs text-slate-600 leading-relaxed">{extractedResume.summary}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Experience */}
+                {extractedResume.experience && extractedResume.experience.length > 0 && (
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold mb-2">Experience</span>
+                    <div className="space-y-3">
+                      {extractedResume.experience.map((exp: any, i: number) => (
+                        <div key={i} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs">
+                          <strong className="block text-slate-800 text-[13px]">{exp.jobTitle}</strong>
+                          <span className="text-slate-600 font-medium">{exp.company}</span>
+                          <span className="text-slate-400 block mt-1">{exp.startDate} - {exp.currentlyWorking ? 'Present' : exp.endDate}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Education */}
+                {extractedResume.education && extractedResume.education.length > 0 && (
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold mb-2">Education</span>
+                    <div className="space-y-3">
+                      {extractedResume.education.map((edu: any, i: number) => (
+                        <div key={i} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs">
+                          <strong className="block text-slate-800 text-[13px]">{edu.degree}</strong>
+                          <span className="text-slate-600 font-medium">{edu.institution}</span>
+                          <span className="text-slate-400 block mt-1">{edu.startDate} - {edu.endDate}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
 
-              {isUploadingResume ? (
-                <div>
-                  <p className="text-xs font-bold text-foreground">Processing and uploading your CV file...</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Encrypting and attaching document to student profile</p>
-                </div>
-              ) : isDragging ? (
-                <div>
-                  <p className="text-xs font-bold text-blue-900">Release document to upload</p>
-                  <p className="text-[11px] text-blue-700 mt-0.5">PDF or Word document format (.pdf, .doc, .docx)</p>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-xs font-bold text-slate-800">
-                    {(profile.resumeFileName || profile.resumeDataUrl) 
-                      ? 'Drop a new file here to replace your CV, or click to browse' 
-                      : 'Drag and drop your CV / Resume here, or click to browse files'}
-                  </p>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Accepts <strong>PDF (.pdf)</strong> and <strong>Word (.doc, .docx)</strong> up to 15MB
-                  </p>
-                  <div className="mt-3">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-border shadow-sm rounded-lg text-xs font-semibold text-slate-700 hover:bg-muted transition-colors">
-                      <Paperclip className="w-3.5 h-3.5 text-slate-400" /> Choose File from Computer
-                    </span>
+              {/* Skills */}
+              {extractedResume.skills && Object.values(extractedResume.skills).flat().length > 0 && (
+                <div className="mt-5 pt-5 border-t border-border/70">
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold mb-2">Extracted Skills</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.values(extractedResume.skills).flat().filter(Boolean).map((skill: any, i: number) => (
+                      <span key={i} className="px-2.5 py-1 bg-violet-50 text-violet-700 border border-violet-100 rounded-lg text-xs font-medium">
+                        {skill}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* Edit Profile Links Form */}
-          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
+        {/* Edit Profile Links Form */}
+        <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
             <h3 className="text-sm font-semibold text-foreground mb-1">Portfolio & Professional Profiles</h3>
             <p className="text-xs text-slate-400 mb-4">Employers evaluate these external links when reviewing applications</p>
 
@@ -1288,6 +1421,17 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       )}
 
       {/* =========================================================
+          2B. SUB-VIEW: AI RESUME AGENT
+          ========================================================= */}
+      {activeTab === 'student_resume_builder' && (
+        <AIResumeAgent
+          studentId={currentStudentId}
+          profile={profile}
+          onBack={() => onNavigate('student_profile')}
+        />
+      )}
+
+      {/* =========================================================
           3. SUB-VIEW: FIND JOBS (student_jobs)
           ========================================================= */}
       {(currentView === 'student_jobs' || currentView === 'jobs' || currentView === 'recommended_jobs') && (
@@ -1310,7 +1454,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     : 'text-slate-600 hover:text-foreground'
                 }`}
               >
-                Recommended for You ({recommendedJobs.length})
+                All Technology Jobs ({recommendedJobs.length})
               </button>
               <button
                 onClick={() => setJobsViewTab('all')}
@@ -1320,7 +1464,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     : 'text-slate-600 hover:text-foreground'
                 }`}
               >
-                All Technology Jobs ({allJobs.length})
+                HACA Jobs ({allJobs.filter(j => j.sourceChannel !== 'AI_JOB_SCRAPER' && j.sourceChannel !== 'ATS_JOB_API').length})
               </button>
             </div>
           </div>
@@ -1456,6 +1600,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
             const filteredAll = allJobs.filter(job => {
               if (job.status !== 'ACTIVE') return false;
+              if (job.sourceChannel === 'AI_JOB_SCRAPER' || job.sourceChannel === 'ATS_JOB_API') return false;
               if (jobCategoryFilter !== 'ALL' && job.category !== jobCategoryFilter) return false;
               if (jobDesignationFilter.trim()) {
                 const df = jobDesignationFilter.toLowerCase().trim();
@@ -1480,7 +1625,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             });
 
             const currentCount = jobsViewTab === 'recommended' ? filteredRecs.length : filteredAll.length;
-            const totalCount = jobsViewTab === 'recommended' ? recommendedJobs.length : allJobs.length;
+            const totalCount = jobsViewTab === 'recommended' ? recommendedJobs.length : allJobs.filter(j => j.sourceChannel !== 'AI_JOB_SCRAPER' && j.sourceChannel !== 'ATS_JOB_API').length;
 
             return (
               <div className="flex items-center justify-between px-1 py-1 text-xs text-slate-500 font-medium">
@@ -1608,13 +1753,13 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                               <Check className="w-3 h-3 text-emerald-600 shrink-0" />
                               <span>Program: {rec.programExplanation || 'Compatible curriculum'}</span>
                             </div>
-                            {(rec.matchedSkills || []).slice(0, 3).map((sk: string) => (
+                            {(rec.matchedSkills || []).map((sk: string) => (
                               <div key={sk} className="flex items-center gap-1 text-emerald-700 font-medium">
                                 <Check className="w-3 h-3 text-emerald-600 shrink-0" />
                                 <span>{sk}</span>
                               </div>
                             ))}
-                            {(rec.missingSkills || []).slice(0, 2).map((sk: string) => (
+                            {(rec.missingSkills || []).map((sk: string) => (
                               <div key={sk} className="flex items-center gap-1 text-amber-700">
                                 <span className="text-amber-500 font-bold text-xs shrink-0">⚠</span>
                                 <span>Missing: {sk}</span>
@@ -1653,13 +1798,13 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             </div>
           )}
 
-          {/* Job listings (All Tech Jobs Tab) */}
+          {/* Job listings (HACA Jobs Tab) */}
           {jobsViewTab === 'all' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {allJobs
                 .filter(job => {
                   if (job.status !== 'ACTIVE') return false;
-
+                  if (job.sourceChannel === 'AI_JOB_SCRAPER' || job.sourceChannel === 'ATS_JOB_API') return false;
                   if (jobCategoryFilter !== 'ALL' && job.category !== jobCategoryFilter) return false;
 
                   if (jobDesignationFilter.trim()) {
@@ -1742,6 +1887,40 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                             </span>
                           ))}
                         </div>
+
+                        {/* Match Explanation Box (Added for HACA Jobs tab too) */}
+                        {matchingRec && (
+                          <div className="p-2.5 bg-muted rounded-lg border border-border/70 text-[11px] space-y-1 mt-2">
+                            <span className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">Why this job matches you:</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-slate-600">
+                              <div className="flex items-center gap-1 text-slate-800 font-medium">
+                                <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span>Role: {matchingRec.designationExplanation || job.normalizedDesignation || 'Compatible role'}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-slate-800 font-medium">
+                                <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span>Program: {matchingRec.programExplanation || 'Compatible curriculum'}</span>
+                              </div>
+                              {(matchingRec.matchedSkills || []).map((sk: string) => (
+                                <div key={sk} className="flex items-center gap-1 text-emerald-700 font-medium">
+                                  <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                                  <span>{sk}</span>
+                                </div>
+                              ))}
+                              {(matchingRec.missingSkills || []).map((sk: string) => (
+                                <div key={sk} className="flex items-center gap-1 text-amber-700">
+                                  <span className="text-amber-500 font-bold text-xs shrink-0">⚠</span>
+                                  <span>Missing: {sk}</span>
+                                </div>
+                              ))}
+                              {matchingRec.experienceExplanation && (
+                                <div className="flex items-center gap-1 text-slate-600 sm:col-span-2 text-[10px]">
+                                  <span>Experience: {matchingRec.experienceExplanation}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="pt-3 mt-3 border-t border-border/70 flex items-center justify-between">

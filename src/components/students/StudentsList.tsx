@@ -38,12 +38,30 @@ export const StudentsList: React.FC<StudentsListProps> = ({
   const [eligibilityFilter, setEligibilityFilter] = useState('ALL');
   const [placementStatusFilter, setPlacementStatusFilter] = useState('ALL');
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(initialSelectedStudent || null);
+  const [extractedResume, setExtractedResume] = useState<any>(null);
 
   useEffect(() => {
     if (initialSelectedStudent) {
       setSelectedStudent(initialSelectedStudent);
     }
   }, [initialSelectedStudent]);
+
+  useEffect(() => {
+    if (selectedStudent) {
+      try {
+        const data = localStorage.getItem(`extracted_resume_${selectedStudent.id}`);
+        if (data) {
+          setExtractedResume(JSON.parse(data));
+        } else {
+          setExtractedResume(null);
+        }
+      } catch {
+        setExtractedResume(null);
+      }
+    } else {
+      setExtractedResume(null);
+    }
+  }, [selectedStudent]);
 
   const loadData = async () => {
     setLoading(true);
@@ -531,6 +549,22 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                   ))}
                 </div>
               </div>
+
+              {/* CV Document Preview */}
+              {(selectedStudent.resumeDataUrl || selectedStudent.resumeUrl) && (
+                <div>
+                  <h4 className="font-semibold text-foreground uppercase tracking-wider text-[11px] mb-3 text-slate-400">
+                    Uploaded Resume Document
+                  </h4>
+                  <div className="p-2 rounded-xl border border-border/70 bg-muted/30 shadow-sm h-[500px]">
+                    <iframe
+                      src={selectedStudent.resumeDataUrl || selectedStudent.resumeUrl}
+                      className="w-full h-full rounded-lg bg-white"
+                      title="CV Preview"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Evaluation remarks */}
               {selectedStudent.evaluationNotes && (

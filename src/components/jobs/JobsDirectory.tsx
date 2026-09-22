@@ -285,7 +285,11 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
   // Comprehensive multi-criteria filtering
   const filteredJobs = jobs.filter(j => {
     // 1. Source filter
-    if (sourceFilter !== 'ALL' && j.sourceChannel !== sourceFilter) return false;
+    if (sourceFilter === 'HACA') {
+      if (j.sourceChannel === 'AI_JOB_SCRAPER' || j.sourceChannel === 'ATS_JOB_API') return false;
+    } else if (sourceFilter !== 'ALL' && j.sourceChannel !== sourceFilter) {
+      return false;
+    }
     
     // 2. Status filter
     if (statusFilter !== 'ALL' && j.status !== statusFilter) return false;
@@ -469,15 +473,8 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
             onChange={e => setSourceFilter(e.target.value)}
             className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
           >
-            <option value="ALL">Source: All Sources</option>
-            <option value="PLACEMENT_DIRECT">Placement Team Direct</option>
-            <option value="STAFF_REFERRAL">Staff Referral</option>
-            <option value="INBOUND">Inbound</option>
-            <option value="OUTREACH">Outreach</option>
-            <option value="REPEATED_PARTNER">Repeated Partner</option>
-            <option value="SOCIAL_MEDIA">Social Media</option>
-            <option value="AI_JOB_SCRAPER">AI Job Scraper (LinkedIn / Apify)</option>
-            <option value="ATS_JOB_API">ATS Public API (Greenhouse / Lever / Ashby)</option>
+            <option value="ALL">All Technology Jobs</option>
+            <option value="HACA">HACA Jobs</option>
           </select>
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>

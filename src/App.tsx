@@ -144,6 +144,8 @@ export default function App() {
       case 'student_profile':
       case 'profile':
         return { title: 'Student Profile', subtitle: 'Academic Records & Portfolio Links' };
+      case 'student_resume_builder':
+        return { title: 'AI Resume Agent', subtitle: 'Build an ATS-Friendly Resume from Your Profile' };
       case 'student_jobs':
         return { title: 'Find Jobs', subtitle: 'Explore Open Corporate Vacancies' };
       case 'student_applications':

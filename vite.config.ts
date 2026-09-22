@@ -9,6 +9,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': path.resolve(__dirname, '.') } },
+  envPrefix: ['VITE_', 'GEMINI_API_KEY', 'GROQ_API_KEY', 'APP_URL'],
   server: {
     port: 5176,
     proxy: { '/api': { target: 'http://localhost:5050', changeOrigin: true } },
