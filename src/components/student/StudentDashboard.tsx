@@ -319,7 +319,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
                       <span>•</span>
                       <span className="font-semibold text-slate-800">{rec.job.salaryRange}</span>
                       <span>•</span>
-                      <span>{rec.job.experienceRequirement}</span>
+                      <span>{rec.job.minExperienceYears > 0 ? `${rec.job.minExperienceYears}+ Years` : (rec.job.experienceRequirement || 'Entry Level')}</span>
                     </div>
 
                     {/* Match Explanation */}

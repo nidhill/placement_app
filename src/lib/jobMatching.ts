@@ -50,16 +50,18 @@ export function matchJobToResume(job: JobListing, resumeData: ResumeData): JobMa
   const totalYearsExp = totalMonthsExp / 12;
 
   // Job requirements (heuristics from string if minExperienceYears not available)
-  const jobExpStr = (job.experienceRequirement || '').toLowerCase();
-  let jobMinYears = 0;
-  if (jobExpStr.includes('0') || jobExpStr.includes('fresh') || jobExpStr.includes('entry')) {
-    jobMinYears = 0;
-  } else if (jobExpStr.includes('1')) {
-    jobMinYears = 1;
-  } else if (jobExpStr.includes('2')) {
-    jobMinYears = 2;
-  } else if (jobExpStr.includes('3')) {
-    jobMinYears = 3;
+  let jobMinYears = job.minExperienceYears || 0;
+  if (!jobMinYears) {
+    const jobExpStr = (job.experienceRequirement || '').toLowerCase();
+    if (jobExpStr.includes('0') || jobExpStr.includes('fresh') || jobExpStr.includes('entry')) {
+      jobMinYears = 0;
+    } else if (jobExpStr.includes('1')) {
+      jobMinYears = 1;
+    } else if (jobExpStr.includes('2')) {
+      jobMinYears = 2;
+    } else if (jobExpStr.includes('3')) {
+      jobMinYears = 3;
+    }
   }
 
   if (totalYearsExp >= jobMinYears) {

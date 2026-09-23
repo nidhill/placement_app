@@ -809,7 +809,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                     </div>
                     <div className="p-3 bg-muted rounded-lg border border-border/70">
                       <span className="text-[11px] text-slate-400 block">Experience</span>
-                      <span className="text-xs font-bold text-foreground mt-0.5 block">{selectedJob.experienceRequirement}</span>
+                      <span className="text-xs font-bold text-foreground mt-0.5 block">{selectedJob.minExperienceYears > 0 ? `${selectedJob.minExperienceYears}+ Years` : (selectedJob.experienceRequirement || 'Entry Level')}</span>
                     </div>
                     <div className="p-3 bg-muted rounded-lg border border-border/70">
                       <span className="text-[11px] text-slate-400 block">Deadline</span>

@@ -507,7 +507,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                       <span>•</span>
                       <span className="font-medium text-slate-800">{job.salaryRange}</span>
                       <span>•</span>
-                      <span>{job.experienceRequirement}</span>
+                      <span>{job.minExperienceYears > 0 ? `${job.minExperienceYears}+ Years` : (job.experienceRequirement || 'Entry Level')}</span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">

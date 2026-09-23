@@ -1726,7 +1726,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
                         <div className="flex items-center gap-3 text-[11px] text-slate-500">
                           <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {job.location} · {job.employmentType || 'FULL_TIME'}</span>
-                          <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" /> {job.experienceRequirement || '0–1 years'}</span>
+                          <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" /> {job.minExperienceYears > 0 ? `${job.minExperienceYears}+ years` : (job.experienceRequirement || '0–1 years')}</span>
                         </div>
 
                         <p className="text-xs text-slate-600 line-clamp-2 mt-1">
@@ -1873,7 +1873,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
                         <div className="flex items-center gap-3 text-[11px] text-slate-500">
                           <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {job.location} · {job.employmentType || 'FULL_TIME'}</span>
-                          <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" /> {job.experienceRequirement || '0–1 years'}</span>
+                          <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" /> {job.minExperienceYears > 0 ? `${job.minExperienceYears}+ years` : (job.experienceRequirement || '0–1 years')}</span>
                         </div>
 
                         <p className="text-xs text-slate-600 line-clamp-2 mt-1">
@@ -2265,7 +2265,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <div className="p-3 bg-muted rounded-xl space-y-1 text-[11px] text-slate-600">
                   <div>• Target Schools: <strong>{(selectedJobForModal.eligibleSchools && selectedJobForModal.eligibleSchools.length > 0) ? selectedJobForModal.eligibleSchools.join(', ') : (selectedJobForModal as any).targetSchool || 'All Schools'}</strong></div>
                   <div>• Target Programs: <strong>{(selectedJobForModal.eligiblePrograms && selectedJobForModal.eligiblePrograms.length > 0) ? selectedJobForModal.eligiblePrograms.join(', ') : (selectedJobForModal as any).targetProgram || 'All Programs'}</strong></div>
-                  <div>• Experience: <strong>{selectedJobForModal.experienceRequirement || `${selectedJobForModal.minExperienceYears || 0} years`}</strong></div>
+                  <div>• Experience: <strong>{selectedJobForModal.minExperienceYears > 0 ? `${selectedJobForModal.minExperienceYears}+ years` : (selectedJobForModal.experienceRequirement || '0-1 years')}</strong></div>
                   <div>• Compensation: <strong>{selectedJobForModal.salaryRange || 'Competitive'}</strong></div>
                 </div>
               </div>
