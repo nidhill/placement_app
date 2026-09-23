@@ -15,7 +15,8 @@ import {
   UserX,
   UserCheck,
   ArrowLeftRight,
-  Loader2
+  Loader2,
+  Key
 } from 'lucide-react';
 
 interface AdminUsersViewProps {
@@ -28,7 +29,8 @@ type PendingAction =
   | { kind: 'role'; user: User; role: UserRole }
   | { kind: 'revoke'; user: User }
   | { kind: 'restore'; user: User }
-  | { kind: 'delete'; user: User };
+  | { kind: 'delete'; user: User }
+  | { kind: 'resetPassword'; user: User };
 
 const ROLE_LABEL: Record<string, string> = { MAIN_ADMIN: 'Admin', PLACEMENT_OFFICER: 'Placement Team', MANAGEMENT: 'Management', STUDENT: 'Student' };
 
@@ -74,6 +76,11 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ onRefreshData, c
       if (pending.kind === 'role') msg = (await api.changeUserRole(pending.user.id, pending.role)).message;
       else if (pending.kind === 'revoke') msg = (await api.revokeUser(pending.user.id)).message;
       else if (pending.kind === 'restore') msg = (await api.restoreUser(pending.user.id)).message;
+      else if (pending.kind === 'resetPassword') {
+        const res = await api.resetPassword(pending.user.id);
+        msg = `Password reset. Temp password: ${res.tempPassword}`;
+        alert(`Temporary password for ${pending.user.email} is:\n\n${res.tempPassword}\n\nPlease copy and share it securely.`);
+      }
       else msg = (await api.deleteUser(pending.user.id)).message;
       setPending(null);
       setToast(msg);
@@ -98,6 +105,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ onRefreshData, c
         cta: 'Change role', danger: false };
       case 'revoke': return { title: `Revoke access for ${name}?`, body: 'They will be signed out immediately and cannot log in to the placement tool until restored.', cta: 'Revoke access', danger: true };
       case 'restore': return { title: `Restore access for ${name}?`, body: 'They will be able to log in again with their existing password.', cta: 'Restore access', danger: false };
+      case 'resetPassword': return { title: `Reset Password for ${name}?`, body: 'This will generate a temporary password for this user. They must use it to log in.', cta: 'Reset Password', danger: false };
       case 'delete': return { title: `Delete ${name}?`, body: `This permanently removes ${a.user.email}'s placement account. Their audit history stays. This cannot be undone.`, cta: 'Delete user', danger: true };
     }
   };
@@ -336,6 +344,11 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ onRefreshData, c
                           <option value="MANAGEMENT">Management</option>
                         </select>
                       )}
+                      {canManage(user) && (
+                        <button onClick={() => setPending({ kind: 'resetPassword', user })} title="Reset password" className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-muted hover:text-blue-600 transition-colors">
+                          <Key className="w-4 h-4" />
+                        </button>
+                      )}
                       {canManage(user) && (user.isActive !== false ? (
                         <button onClick={() => setPending({ kind: 'revoke', user })} title="Revoke access" className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-muted hover:text-amber-600 transition-colors">
                           <UserX className="w-4 h-4" />
@@ -367,7 +380,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({ onRefreshData, c
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/30 backdrop-blur-xs" onClick={() => !acting && setPending(null)}>
           <div className="bg-white rounded-2xl shadow-xl border border-border w-full max-w-sm p-6 animate-fade-up" onClick={e => e.stopPropagation()}>
             <div className={`w-11 h-11 rounded-full flex items-center justify-center mb-4 ${c.danger ? 'bg-red-50 text-red-600' : 'bg-primary/10 text-primary'}`}>
-              {pending.kind === 'delete' ? <Trash2 className="w-5 h-5" /> : pending.kind === 'revoke' ? <UserX className="w-5 h-5" /> : pending.kind === 'restore' ? <UserCheck className="w-5 h-5" /> : <ArrowLeftRight className="w-5 h-5" />}
+              {pending.kind === 'delete' ? <Trash2 className="w-5 h-5" /> : pending.kind === 'revoke' ? <UserX className="w-5 h-5" /> : pending.kind === 'restore' ? <UserCheck className="w-5 h-5" /> : pending.kind === 'resetPassword' ? <Key className="w-5 h-5" /> : <ArrowLeftRight className="w-5 h-5" />}
             </div>
             <h3 className="text-base font-bold text-foreground">{c.title}</h3>
             <p className="text-xs text-slate-500 mt-2 leading-relaxed">{c.body}</p>
