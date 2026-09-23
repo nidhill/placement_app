@@ -81,7 +81,7 @@ class ApiClient {
   // Auth: staff sign in through the SHO App, students through the LMS. Both
   // issue a JWT this server accepts on /api/placement/*.
   public async loginStaff(email: string, password: string): Promise<{ token: string }> {
-    if (email === 'kusasi@gmail.com' && password === '123456') {
+    if (email === 'kusasi@gmail.com' && password === 'Kusasi123') {
       setToken('mock-token-kusasi');
       return { token: 'mock-token-kusasi' };
     }
