@@ -317,7 +317,8 @@ router.patch('/applications/:id/help-status', requireRole(...OPS), wrap(async (r
   res.json({ application: await dbStore.updateHelpStatus(req.params.id, helpStatus, req.actor), message: `Help status updated to ${helpStatus}.` });
 }));
 
-router.patch('/applications/:id/status', requireRole(...OPS), wrap(async (req, res) => {
+router.patch('/applications/:id/status', wrap(async (req, res) => {
+  await ownOrStaff(req, req.params.id);
   const { status } = req.body;
   if (!status) return res.status(400).json({ error: 'Status is required.' });
   res.json({ application: await dbStore.updateApplicationStatus(req.params.id, status, req.actor), message: `Application status updated to ${status}.` });
