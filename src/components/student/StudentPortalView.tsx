@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StudentProfile, JobListing, JobApplication, RejectionCategory, ApplicationStatus, ApplicationDeclineReason, HelpStatus } from '../../types.ts';
 import { api } from '../../lib/api.ts';
-import { plainText, applyLink } from '../../lib/text.ts';
+import { plainText, applyLink, getDisplayExperience } from '../../lib/text.ts';
 import { ApplicationStatusBadge, HelpStatusBadge } from '../common/StatusBadge.tsx';
 import { NavigationItem } from '../common/Sidebar.tsx';
 import { AIResumeAgent } from '../resume/AIResumeAgent.tsx';
@@ -226,12 +226,33 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
     loadData();
   }, [currentStudentId]);
 
+  const handleExpressInterest = async (job: JobListing) => {
+    if (!profile) return;
+    setApplyingJobId(job.id);
+    setApplyError(null);
+    try {
+      const res = await api.applyForJob(job.id, currentStudentId);
+      const appId = res?.application?.id;
+      if (appId) {
+        await api.confirmApplication(appId);
+      }
+      setSelectedJobForModal(null);
+      setApplySuccessMessage(`Interest Registered! Your profile & CV have been submitted to the HACA Placement Team for "${job.title}". The placement team will review your application for next steps.`);
+      setTimeout(() => setApplySuccessMessage(null), 6000);
+      await loadData();
+      if (onRefreshData) onRefreshData();
+    } catch (err: any) {
+      setApplyError(err?.message || "Couldn't register your interest. Please try again.");
+    } finally {
+      setApplyingJobId(null);
+    }
+  };
+
   const handleExternalApply = async (job: JobListing) => {
     if (!profile) return;
     const targetUrl = applyLink(job);
     if (!targetUrl) {
-      setApplyError('This posting has no application link yet. Ask the placement team where to apply.');
-      return;
+      return handleExpressInterest(job);
     }
     setApplyError(null);
 
@@ -1726,7 +1747,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
                         <div className="flex items-center gap-3 text-[11px] text-slate-500">
                           <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {job.location} · {job.employmentType || 'FULL_TIME'}</span>
-                          <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" /> {job.minExperienceYears > 0 ? `${job.minExperienceYears}+ years` : (job.experienceRequirement || '0–1 years')}</span>
+                          <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" /> {getDisplayExperience(job)}</span>
                         </div>
 
                         <p className="text-xs text-slate-600 line-clamp-2 mt-1">
@@ -1873,7 +1894,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
                         <div className="flex items-center gap-3 text-[11px] text-slate-500">
                           <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {job.location} · {job.employmentType || 'FULL_TIME'}</span>
-                          <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" /> {job.minExperienceYears > 0 ? `${job.minExperienceYears}+ years` : (job.experienceRequirement || '0–1 years')}</span>
+                          <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" /> {getDisplayExperience(job)}</span>
                         </div>
 
                         <p className="text-xs text-slate-600 line-clamp-2 mt-1">
@@ -2265,7 +2286,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <div className="p-3 bg-muted rounded-xl space-y-1 text-[11px] text-slate-600">
                   <div>• Target Schools: <strong>{(selectedJobForModal.eligibleSchools && selectedJobForModal.eligibleSchools.length > 0) ? selectedJobForModal.eligibleSchools.join(', ') : (selectedJobForModal as any).targetSchool || 'All Schools'}</strong></div>
                   <div>• Target Programs: <strong>{(selectedJobForModal.eligiblePrograms && selectedJobForModal.eligiblePrograms.length > 0) ? selectedJobForModal.eligiblePrograms.join(', ') : (selectedJobForModal as any).targetProgram || 'All Programs'}</strong></div>
-                  <div>• Experience: <strong>{selectedJobForModal.minExperienceYears > 0 ? `${selectedJobForModal.minExperienceYears}+ years` : (selectedJobForModal.experienceRequirement || '0-1 years')}</strong></div>
+                  <div>• Experience: <strong>{getDisplayExperience(selectedJobForModal)}</strong></div>
                   <div>• Compensation: <strong>{selectedJobForModal.salaryRange || 'Competitive'}</strong></div>
                 </div>
               </div>
@@ -2309,6 +2330,18 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   </span>
                 )}
               </div>
+              {/* Direct HACA Drive Banner when no external link */}
+              {!applyLink(selectedJobForModal) && (
+                <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-xl text-[11px] text-emerald-950 flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold block text-emerald-900">Direct HACA Placement Drive</span>
+                    <span className="text-emerald-800">
+                      This opportunity is managed directly by the HACA Placement Team. When you click "Express Interest", your profile & verified CV will be submitted to the placement team for direct shortlisting and interview rounds.
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="p-4 px-5 border-t border-border/70 bg-muted flex items-center justify-between flex-wrap gap-2">
@@ -2323,16 +2356,32 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 {(() => {
                   const appliedApp = myApplications.find(a => a.jobId === selectedJobForModal.id);
                   const isApplying = applyingJobId === selectedJobForModal.id;
-                  const targetUrl = selectedJobForModal.applicationUrl || 
-                                    selectedJobForModal.externalUrl || 
-                                    selectedJobForModal.sourceUrl || 
-                                    (selectedJobForModal as any).url || 
-                                    (selectedJobForModal as any).link || 
-                                    (selectedJobForModal as any).jobUrl || 
-                                    `https://www.google.com/search?q=${encodeURIComponent(selectedJobForModal.company + ' ' + selectedJobForModal.title + ' apply')}`;
+                  const targetUrl = applyLink(selectedJobForModal);
 
                   if (appliedApp) {
                     if (appliedApp.status === 'APPLICATION_STARTED') {
+                      if (!targetUrl) {
+                        return (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleConfirmApplication(appliedApp.id)}
+                              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Confirm Interest</span>
+                            </button>
+                            <button
+                              id={`btn-withdraw-modal-${appliedApp.id}`}
+                              disabled={withdrawingAppId === appliedApp.id}
+                              onClick={() => handleWithdrawApplication(appliedApp.id, selectedJobForModal.title)}
+                              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Withdraw</span>
+                            </button>
+                          </div>
+                        );
+                      }
                       return (
                         <div className="flex items-center gap-2">
                           <button
@@ -2361,12 +2410,12 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     if (appliedApp.status === 'NOT_APPLIED') {
                       return (
                         <button
-                          disabled={!targetUrl || isApplying}
-                          onClick={() => handleExternalApply(selectedJobForModal)}
+                          disabled={isApplying}
+                          onClick={() => targetUrl ? handleExternalApply(selectedJobForModal) : handleExpressInterest(selectedJobForModal)}
                           className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer disabled:opacity-60"
                         >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          <span>Apply Again ↗</span>
+                          {targetUrl ? <ExternalLink className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                          <span>{targetUrl ? 'Apply Again ↗' : 'Express Interest Again'}</span>
                         </button>
                       );
                     }
@@ -2375,7 +2424,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                       <div className="flex items-center gap-2">
                         <div className="px-3.5 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-semibold flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>✓ Applied</span>
+                          <span>{targetUrl ? '✓ Applied' : '✓ Interest Registered (Direct Drive)'}</span>
                         </div>
                         {targetUrl && (
                           <a
@@ -2405,10 +2454,12 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   if (!targetUrl) {
                     return (
                       <button
-                        disabled
-                        className="px-4 py-1.5 bg-muted text-slate-400 border border-border rounded-lg text-xs font-medium cursor-not-allowed"
+                        disabled={isApplying}
+                        onClick={() => handleExpressInterest(selectedJobForModal)}
+                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-60 cursor-pointer"
                       >
-                        Application link unavailable
+                        <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                        <span>{isApplying ? 'Submitting Interest...' : 'Express Interest to Placement Team'}</span>
                       </button>
                     );
                   }

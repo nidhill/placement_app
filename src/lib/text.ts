@@ -11,7 +11,34 @@ export function plainText(input?: string | null): string {
 
 // A usable application link, or undefined (older rows carry a fabricated
 // web-search URL that we no longer send students to).
-export function applyLink(job: { applicationUrl?: string; externalUrl?: string; sourceUrl?: string }): string | undefined {
-  const real = (u?: string) => (u && !/google\.com\/search/i.test(u) ? u : undefined);
+export function applyLink(job?: { applicationUrl?: string; externalUrl?: string; sourceUrl?: string } | null): string | undefined {
+  if (!job) return undefined;
+  const real = (u?: string) => (
+    u && 
+    !/google\.com\/search/i.test(u) && 
+    !/haca\.internal|direct-drive|internal-drive/i.test(u) 
+      ? u 
+      : undefined
+  );
   return real(job.applicationUrl) || real(job.externalUrl) || real(job.sourceUrl);
+}
+
+export function getDisplayExperience(job: { experienceRequirement?: string, minExperienceYears?: number, description?: string }): string {
+  if (job.description) {
+    const blockMatch = job.description.match(/\*\*Experience:\*\*\s*([^*]+?)(?=\*\*|\n\n|$)/i);
+    if (blockMatch && blockMatch[1].trim().length > 0 && blockMatch[1].trim().length < 40) {
+      const exp = blockMatch[1].trim().replace(/\n/g, ' ');
+      return exp;
+    }
+    const match2 = job.description.match(/Experience:\s*([0-9+ -]+\s*(?:years?|yrs?))/i);
+    if (match2 && match2[1]) {
+      return match2[1].trim();
+    }
+  }
+
+  if (job.minExperienceYears && job.minExperienceYears > 0) {
+    return `${job.minExperienceYears}+ Years`;
+  }
+
+  return job.experienceRequirement || '0-1 year (Entry Level)';
 }

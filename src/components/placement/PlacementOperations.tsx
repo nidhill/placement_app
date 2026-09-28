@@ -8,6 +8,7 @@ import {
   ApplicationStatus 
 } from '../../types.ts';
 import { api } from '../../lib/api.ts';
+import { getDisplayExperience } from '../../lib/text.ts';
 import { 
   SourceChannelBadge, 
   EligibilityBadge, 
@@ -65,6 +66,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
   const [newReferralName, setNewReferralName] = useState('');
   const [newRequiredSkills, setNewRequiredSkills] = useState('React, Node.js, PostgreSQL');
   const [newSalary, setNewSalary] = useState('₹8,00,000 - ₹12,00,000 / annum');
+  const [newApplyUrl, setNewApplyUrl] = useState('');
   const [newDescription, setNewDescription] = useState('');
 
   // Interview Scheduling Modal
@@ -160,6 +162,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
         countryCode: 'IN',
         sourceChannel: newSourceChannel,
         referralSourceName: newSourceChannel === 'STAFF_REFERRAL' ? (newReferralName || 'Instructor Referral') : undefined,
+        applicationUrl: newApplyUrl.trim(),
         requiredSkills: skillsArray,
         preferredSkills: ['Git', 'Communication'],
         salaryRange: newSalary || '₹8,00,000 - ₹12,00,000 / annum',
@@ -171,6 +174,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
       setShowCreateJob(false);
       setNewJobTitle('');
       setNewCompany('');
+      setNewApplyUrl('');
       setNewDescription('');
       loadData();
       if (onRefreshData) onRefreshData();
@@ -507,7 +511,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                       <span>•</span>
                       <span className="font-medium text-slate-800">{job.salaryRange}</span>
                       <span>•</span>
-                      <span>{job.minExperienceYears > 0 ? `${job.minExperienceYears}+ Years` : (job.experienceRequirement || 'Entry Level')}</span>
+                      <span>{getDisplayExperience(job)}</span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -836,6 +840,22 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
                   onChange={e => setNewSalary(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Application Link <span className="text-slate-400 font-normal">(Optional for Direct HACA Drives)</span>
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://company.com/apply... (leave blank for internal drive)"
+                  value={newApplyUrl}
+                  onChange={e => setNewApplyUrl(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Leave blank for internal placement drives. Students will register their interest directly with the HACA Placement Team.
+                </p>
               </div>
 
               <div>

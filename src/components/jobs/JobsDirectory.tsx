@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { JobListing, JobMatchResult, StudentProfile, JobSourceChannel } from '../../types.ts';
 import { api } from '../../lib/api.ts';
-import { plainText } from '../../lib/text.ts';
+import { plainText, getDisplayExperience, applyLink } from '../../lib/text.ts';
 import { SourceChannelBadge, MatchVerdictBadge } from '../common/StatusBadge.tsx';
 import { 
   Search, 
@@ -72,11 +72,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [designationFilter, setDesignationFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('ALL');
-  const [skillFilter, setSkillFilter] = useState('');
-  const [experienceFilter, setExperienceFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
   
   const [selectedJob, setSelectedJob] = useState<JobListing | null>(null);
@@ -221,7 +217,11 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
 
   const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newCompany.trim() || !newJobRole || !/^https?:\/\/\S+$/i.test(newApplyUrl.trim())) return;
+    if (!newTitle.trim() || !newCompany.trim() || !newJobRole) return;
+    if (newApplyUrl.trim() && !/^https?:\/\/\S+$/i.test(newApplyUrl.trim())) {
+      alert('If provided, the application link must be a valid URL starting with http:// or https://');
+      return;
+    }
     setSubmitting(true);
     try {
       const skillsArray = newSkills.split(',').map(s => s.trim()).filter(Boolean);
@@ -244,7 +244,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
         eligibleSchools: ['School of Tech'],
         eligiblePrograms: ['Full Stack Web Development'],
         sourceChannel: newChannel,
-        applicationUrl: newApplyUrl.trim(),
+        applicationUrl: newApplyUrl.trim() || 'https://haca.internal/direct-drive',
         normalizedDesignation: newJobRole,
         status: 'ACTIVE',
         deadline: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString()
@@ -294,42 +294,12 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
     // 2. Status filter
     if (statusFilter !== 'ALL' && j.status !== statusFilter) return false;
 
-    // 3. Employment type filter
-    if (typeFilter !== 'ALL' && j.employmentType !== typeFilter) return false;
+    // 3. Category filter
+    if (categoryFilter !== 'ALL' && j.category !== categoryFilter) return false;
 
     // 4. Location filter
     if (locationFilter.trim()) {
       if (!j.location.toLowerCase().includes(locationFilter.toLowerCase().trim())) return false;
-    }
-
-    // 5. Skill filter
-    if (skillFilter.trim()) {
-      const sf = skillFilter.toLowerCase().trim();
-      const hasSkill = j.requiredSkills.some(s => s.toLowerCase().includes(sf)) ||
-                        (j.preferredSkills && j.preferredSkills.some(s => s.toLowerCase().includes(sf)));
-      if (!hasSkill) return false;
-    }
-
-    // 6. Category filter
-    if (categoryFilter !== 'ALL' && j.category !== categoryFilter) return false;
-
-    // 7. Role / Designation filter
-    if (designationFilter.trim()) {
-      const df = designationFilter.toLowerCase().trim();
-      const desigMatch = (j.normalizedDesignation || '').toLowerCase().includes(df) ||
-                         j.title.toLowerCase().includes(df);
-      if (!desigMatch) return false;
-    }
-
-    // 8. Experience filter
-    if (experienceFilter !== 'ALL') {
-      const expText = (j.experienceRequirement || '').toLowerCase();
-      if (experienceFilter === 'ENTRY' && !expText.includes('0') && !expText.includes('fresh') && !expText.includes('entry') && !expText.includes('graduate')) {
-        return false;
-      }
-      if (experienceFilter === 'EXPERIENCED' && (expText.includes('0-1') || expText.includes('fresh') || expText.includes('entry'))) {
-        return false;
-      }
     }
 
     // 9. General search query (title, company, description, category, designation)
@@ -507,19 +477,8 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
 
-        {/* Role / Designation Filter */}
-        <div className="relative w-36">
-          <input
-            type="text"
-            placeholder="Role / Designation..."
-            value={designationFilter}
-            onChange={e => setDesignationFilter(e.target.value)}
-            className="w-full px-3 py-1.5 text-xs bg-muted border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-slate-800"
-          />
-        </div>
-
         {/* Location Filter */}
-        <div className="relative w-36">
+        <div className="relative w-40">
           <MapPin className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -530,58 +489,13 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
           />
         </div>
 
-        {/* Employment Type Filter */}
-        <div className="relative">
-          <select
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
-            className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
-          >
-            <option value="ALL">Type: All</option>
-            <option value="FULL_TIME">Full-Time</option>
-            <option value="INTERNSHIP">Internship</option>
-            <option value="CONTRACT">Contract</option>
-            <option value="PART_TIME">Part-Time</option>
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-        </div>
-
-        {/* Skill Filter */}
-        <div className="relative w-32">
-          <input
-            type="text"
-            placeholder="Skill (e.g. React)..."
-            value={skillFilter}
-            onChange={e => setSkillFilter(e.target.value)}
-            className="w-full px-3 py-1.5 text-xs bg-muted border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-slate-800"
-          />
-        </div>
-
-        {/* Experience Filter */}
-        <div className="relative">
-          <select
-            value={experienceFilter}
-            onChange={e => setExperienceFilter(e.target.value)}
-            className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
-          >
-            <option value="ALL">Experience: All</option>
-            <option value="ENTRY">Entry / Fresh</option>
-            <option value="EXPERIENCED">Experienced</option>
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-        </div>
-
-        {(searchQuery || sourceFilter !== 'ALL' || categoryFilter !== 'ALL' || designationFilter || locationFilter || typeFilter !== 'ALL' || skillFilter || experienceFilter !== 'ALL') && (
+        {(searchQuery || sourceFilter !== 'ALL' || categoryFilter !== 'ALL' || locationFilter) && (
           <button
             onClick={() => {
               setSearchQuery('');
               setSourceFilter('ALL');
               setCategoryFilter('ALL');
-              setDesignationFilter('');
               setLocationFilter('');
-              setTypeFilter('ALL');
-              setSkillFilter('');
-              setExperienceFilter('ALL');
             }}
             className="text-[11px] text-slate-500 hover:text-slate-800 underline ml-auto cursor-pointer"
           >
@@ -702,9 +616,9 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                     {/* Action */}
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {(job.applicationUrl || job.externalUrl) && (
+                        {applyLink(job) ? (
                           <a
-                            href={job.applicationUrl || job.externalUrl}
+                            href={applyLink(job)}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
@@ -713,6 +627,10 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                             <ExternalLink className="w-3 h-3" />
                             <span>OG Portal ↗</span>
                           </a>
+                        ) : (
+                          <span className="px-2 py-0.5 text-emerald-800 bg-emerald-50 border border-emerald-200 rounded text-[10px] font-bold">
+                            Direct Drive
+                          </span>
                         )}
                         <button
                           onClick={(e) => {
@@ -809,7 +727,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                     </div>
                     <div className="p-3 bg-muted rounded-lg border border-border/70">
                       <span className="text-[11px] text-slate-400 block">Experience</span>
-                      <span className="text-xs font-bold text-foreground mt-0.5 block">{selectedJob.minExperienceYears > 0 ? `${selectedJob.minExperienceYears}+ Years` : (selectedJob.experienceRequirement || 'Entry Level')}</span>
+                      <span className="text-xs font-bold text-foreground mt-0.5 block">{getDisplayExperience(selectedJob)}</span>
                     </div>
                     <div className="p-3 bg-muted rounded-lg border border-border/70">
                       <span className="text-[11px] text-slate-400 block">Deadline</span>
@@ -956,9 +874,9 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                   </button>
                 )}
 
-                {(selectedJob.applicationUrl || selectedJob.externalUrl) && (
+                {applyLink(selectedJob) ? (
                   <a
-                    href={selectedJob.applicationUrl || selectedJob.externalUrl}
+                    href={applyLink(selectedJob)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 border border-blue-700 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm cursor-pointer"
@@ -966,6 +884,11 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>Go to OG Job Portal ↗</span>
                   </a>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Direct HACA Drive (No External Link)</span>
+                  </span>
                 )}
 
                 <button
@@ -1080,16 +1003,19 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
               </div>
 
               <div>
-                <label className="block text-slate-700 font-medium mb-1">Application link *</label>
+                <label className="block text-slate-700 font-medium mb-1">
+                  Application Link <span className="text-slate-400 font-normal">(Optional for Direct HACA Drives)</span>
+                </label>
                 <input
                   type="url"
-                  required
                   value={newApplyUrl}
                   onChange={e => setNewApplyUrl(e.target.value)}
-                  placeholder="https://company.com/careers/… or the LinkedIn / Naukri posting"
+                  placeholder="https://company.com/careers/… (leave blank for internal drive)"
                   className="w-full px-3 py-1.5 bg-muted border border-border rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Students are sent here when they press Apply.</p>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Leave blank for internal placement drives. Students will register their interest directly with the HACA Placement Team.
+                </p>
               </div>
 
               <div>

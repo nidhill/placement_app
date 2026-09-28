@@ -6,6 +6,7 @@ import {
   RejectionCategory 
 } from '../../types.ts';
 import { api } from '../../lib/api.ts';
+import { getDisplayExperience } from '../../lib/text.ts';
 import { 
   EligibilityBadge, 
   ApplicationStatusBadge, 
@@ -319,7 +320,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ currentStude
                       <span>•</span>
                       <span className="font-semibold text-slate-800">{rec.job.salaryRange}</span>
                       <span>•</span>
-                      <span>{rec.job.minExperienceYears > 0 ? `${rec.job.minExperienceYears}+ Years` : (rec.job.experienceRequirement || 'Entry Level')}</span>
+                      <span>{getDisplayExperience(rec.job)}</span>
                     </div>
 
                     {/* Match Explanation */}

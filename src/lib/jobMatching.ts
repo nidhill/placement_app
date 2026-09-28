@@ -1,5 +1,6 @@
 import { JobListing, JobMatchResult, MatchVerdict } from '../types.ts';
 import { ResumeData } from '../components/resume/types.ts';
+import { getDisplayExperience } from './text.ts';
 
 export function matchJobToResume(job: JobListing, resumeData: ResumeData): JobMatchResult {
   // Combine all resume skills into a flat array for easy checking
@@ -52,15 +53,14 @@ export function matchJobToResume(job: JobListing, resumeData: ResumeData): JobMa
   // Job requirements (heuristics from string if minExperienceYears not available)
   let jobMinYears = job.minExperienceYears || 0;
   if (!jobMinYears) {
-    const jobExpStr = (job.experienceRequirement || '').toLowerCase();
-    if (jobExpStr.includes('0') || jobExpStr.includes('fresh') || jobExpStr.includes('entry')) {
+    const jobExpStr = getDisplayExperience(job).toLowerCase();
+    if (jobExpStr.includes('fresh') || jobExpStr.includes('entry') || /0[- ]*1/.test(jobExpStr)) {
       jobMinYears = 0;
-    } else if (jobExpStr.includes('1')) {
-      jobMinYears = 1;
-    } else if (jobExpStr.includes('2')) {
-      jobMinYears = 2;
-    } else if (jobExpStr.includes('3')) {
-      jobMinYears = 3;
+    } else {
+      const numMatch = jobExpStr.match(/(\d+)/);
+      if (numMatch && numMatch[1]) {
+        jobMinYears = parseInt(numMatch[1], 10);
+      }
     }
   }
 

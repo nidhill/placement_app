@@ -335,9 +335,20 @@ class ApiClient {
   }
 
   public async createJob(jobData: any): Promise<{ job: JobListing; message: string }> {
+    const rawUrl = (jobData.applicationUrl || '').trim();
+    let finalUrl = rawUrl;
+    if (!finalUrl || /^https?:\/\/(www\.)?google\.[a-z.]+\/search/i.test(finalUrl)) {
+      finalUrl = 'https://haca.internal/direct-drive';
+    } else if (!/^https?:\/\//i.test(finalUrl)) {
+      finalUrl = `https://${finalUrl}`;
+    }
+
     return this.request('/api/placement/jobs', {
       method: 'POST',
-      body: JSON.stringify(jobData)
+      body: JSON.stringify({
+        ...jobData,
+        applicationUrl: finalUrl
+      })
     });
   }
 

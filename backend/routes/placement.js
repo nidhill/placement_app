@@ -236,7 +236,9 @@ router.post('/jobs', requireRole(...OPS), wrap(async (req, res) => {
   if (!locCheck.isIndia) return res.status(400).json({ error: `Job creation rejected: Location "${b.location || 'Empty'}" is outside India. The HACA Placement Platform strictly requires all jobs to be located in India.` });
   const requiredSkills = Array.isArray(b.requiredSkills) ? b.requiredSkills : [b.requiredSkills];
   const applicationUrl = String(b.applicationUrl || b.externalUrl || '').trim();
-  if (!/^https?:\/\/\S+$/i.test(applicationUrl)) return res.status(400).json({ error: 'An application link (https://…) is required so students know where to apply.' });
+  if (applicationUrl && !/^https?:\/\/\S+$/i.test(applicationUrl)) {
+    return res.status(400).json({ error: 'If provided, the application link must be a valid URL starting with http:// or https://.' });
+  }
   const classification = TechJobClassifier.classify({ title: b.title, description: b.description, skills: requiredSkills });
   const job = await dbStore.createJob({
     title: b.title, company: b.company, location: locCheck.normalizedLocation, countryCode: 'IN',
@@ -246,7 +248,7 @@ router.post('/jobs', requireRole(...OPS), wrap(async (req, res) => {
     educationRequirements: b.educationRequirements || ['HACA Certificate'], eligibleSchools: b.eligibleSchools || [], eligiblePrograms: b.eligiblePrograms || [],
     category: b.category || (classification.isTechJob ? classification.category : 'Software Development'),
     normalizedDesignation: b.normalizedDesignation || DesignationNormalizer.normalize(b.title),
-    sourceChannel: b.sourceChannel, referralSourceName: b.referralSourceName, externalUrl: applicationUrl, applicationUrl,
+    sourceChannel: b.sourceChannel, referralSourceName: b.referralSourceName, externalUrl: applicationUrl || undefined, applicationUrl: applicationUrl || undefined,
     deadline: b.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), status: 'ACTIVE', discoveredAt: new Date().toISOString(),
   }, req.actor);
   res.status(201).json({ job, message: 'Job created and tagged successfully.' });

@@ -83,6 +83,7 @@ export const PlacementOfficerDashboard: React.FC<PlacementOfficerDashboardProps>
   const activeOffers = applications.filter(a => a.status === 'OFFER_RECEIVED' || a.status === 'SELECTED').length;
   const confirmedPlacements = applications.filter(a => a.status === 'JOINED').length;
 
+
   // Pipeline counts
   const pipelineStages = [
     { label: 'Applied', count: applications.filter(a => a.status === 'APPLIED').length, color: 'bg-secondary text-slate-700' },
@@ -151,7 +152,7 @@ export const PlacementOfficerDashboard: React.FC<PlacementOfficerDashboardProps>
         </div>
       </div>
 
-      {/* 6 Key Operational KPIs */}
+      {/* Key Operational KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         
         {/* 1. Eligible Students */}
@@ -423,3 +424,4 @@ export const PlacementOfficerDashboard: React.FC<PlacementOfficerDashboardProps>
     </div>
   );
 };
+
