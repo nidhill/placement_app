@@ -24,7 +24,7 @@ export const SkillsSection: React.FC<Props> = ({ skills, onChange }) => {
 
     // Check for duplicates across all categories
     const normalized = normalizeSkill(raw);
-    const allSkills = Object.values(skills).flat();
+    const allSkills = Object.values(skills).flat() as string[];
     if (allSkills.some(s => normalizeSkill(s) === normalized)) return;
 
     const updated = { ...skills, [category]: [...skills[category], raw] };

@@ -38,6 +38,19 @@ export const StudentsList: React.FC<StudentsListProps> = ({
   const [eligibilityFilter, setEligibilityFilter] = useState('ALL');
   const [placementStatusFilter, setPlacementStatusFilter] = useState('ALL');
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(initialSelectedStudent || null);
+
+  // Open on the row the list already has, then fill in the CV. The roster is
+  // fetched without resumeUrl/resumeDataUrl — the same base64 PDF held twice,
+  // which made two students take five seconds to load — so the record being
+  // read is fetched on its own.
+  const openStudent = (student: StudentProfile) => {
+    setSelectedStudent(student);
+    if (!student.resumeDataUrl && !student.resumeUrl) {
+      api.getStudent(student.id)
+        .then(r => setSelectedStudent(cur => (cur && cur.id === student.id ? { ...cur, ...r.student } : cur)))
+        .catch(() => { /* the panel keeps what the list gave it */ });
+    }
+  };
   const [extractedResume, setExtractedResume] = useState<any>(null);
 
   useEffect(() => {
@@ -272,7 +285,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                   return (
                     <tr 
                       key={student.id} 
-                      onClick={() => setSelectedStudent(student)}
+                      onClick={() => openStudent(student)}
                       className="hover:bg-muted/60 transition-colors cursor-pointer group"
                     >
                       {/* Student info */}
@@ -347,7 +360,7 @@ export const StudentsList: React.FC<StudentsListProps> = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedStudent(student);
+                            openStudent(student);
                           }}
                           className="px-2.5 py-1 text-xs font-semibold text-slate-700 hover:text-foreground bg-muted hover:bg-secondary rounded-md transition-colors inline-flex items-center gap-1.5"
                           title="Open Student Profile"

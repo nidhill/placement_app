@@ -106,20 +106,24 @@ export function matchJobToResume(job: JobListing, resumeData: ResumeData): JobMa
   const matchScore = skillsScore + experienceScore + designationScore + programScore;
 
   let matchLevel: 'Excellent Match' | 'Good Match' | 'Partial Match' | 'Low Match';
-  let verdict: MatchVerdict = 'LOW';
-  
+  // MatchVerdict is what MatchVerdictBadge switches on, and it has always been
+  // MATCHED / PARTIALLY_MATCHED / NOT_MATCHED. This scored HIGH / MEDIUM / LOW
+  // instead, which no case matches, so the badge rendered nothing at all on
+  // every recommendation.
+  let verdict: MatchVerdict = 'NOT_MATCHED';
+
   if (matchScore >= 80) {
     matchLevel = 'Excellent Match';
-    verdict = 'HIGH';
+    verdict = 'MATCHED';
   } else if (matchScore >= 60) {
     matchLevel = 'Good Match';
-    verdict = 'MEDIUM';
+    verdict = 'PARTIALLY_MATCHED';
   } else if (matchScore >= 40) {
     matchLevel = 'Partial Match';
-    verdict = 'LOW';
+    verdict = 'PARTIALLY_MATCHED';
   } else {
     matchLevel = 'Low Match';
-    verdict = 'LOW';
+    verdict = 'NOT_MATCHED';
   }
 
   return {

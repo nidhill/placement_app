@@ -1,47 +1,31 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // AI Resume Agent — Groq AI Service
 // ──────────────────────────────────────────────────────────────────────────────
-// Calls the Groq API directly from the frontend using the VITE_GROQ_API_KEY.
+// The model runs behind the placement API (/api/placement/ai/complete) — an
+// AI key shipped to the browser is readable by anyone who opens the page.
 // Every prompt enforces strict factuality: the AI never invents information.
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { ResumeData, ATSAnalysisResult, ATSCheckItem, JobKeywordMatch, SKILL_CATEGORY_LABELS, ResumeSkills } from './types';
 import * as pdfjsLib from 'pdfjs-dist';
+import { api } from '../../lib/api';
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || import.meta.env.GROQ_API_KEY || '';
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-
 // ─── Core API Call ───────────────────────────────────────────────────────────
 
+// Through the server, not straight to Groq. The placement_app version of this
+// file called api.groq.com from the browser with import.meta.env.VITE_GROQ_API_KEY,
+// which is compiled into the bundle and readable by anyone who opens the page —
+// and spendable by anyone who copies it. It also meant the key had to be set on
+// Vercel, while GROQ_API_KEY is already set on Render for the server, so every
+// extraction failed with "Groq API key is not configured".
+//
+// server/placement/services/resumeAi.js sends the identical request: same model,
+// same temperature, same response_format. Nothing is lost by going through it.
 async function callGemini(prompt: string): Promise<string> {
-  if (!GROQ_API_KEY) {
-    throw new Error('Groq API key is not configured. Please set VITE_GROQ_API_KEY in your .env file.');
-  }
-
-  const response = await fetch(GROQ_API_URL, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GROQ_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: 'openai/gpt-oss-120b',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.1,
-      response_format: { type: 'json_object' }
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Groq API error (${response.status})`);
-  }
-
-  const result = await response.json();
-  return result?.choices?.[0]?.message?.content?.trim() || '';
+  return api.aiComplete(prompt);
 }
 
 async function extractTextFromPdfBase64(base64Data: string): Promise<string> {
@@ -436,5 +420,6 @@ Rules:
 }
 
 export function isAIConfigured(): boolean {
-  return !!GROQ_API_KEY;
+  // The key lives on the server; assume available and let a call report failure.
+  return true;
 }

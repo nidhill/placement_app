@@ -74,21 +74,6 @@ class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = getToken();
     
-    if (token?.startsWith('mock-token-') && !endpoint.includes('/login')) {
-      const mockAnalytics = { totalStudents: 10, eligibleStudents: 8, activeJobs: 5, totalApplications: 12, totalInterviews: 3, totalPlacements: 1, placementRate: 10, activeCompanies: 3, averageTimeToPlacement: 14, studentsNeedingHelp: 1, channelMetrics: [] };
-      if (endpoint.includes('/analytics/overview')) return mockAnalytics as any;
-      if (endpoint.includes('/students')) return { students: [] } as any;
-      if (endpoint.includes('/jobs')) return { jobs: [] } as any;
-      if (endpoint.includes('/applications')) return { applications: [] } as any;
-      if (endpoint.includes('/users')) return { users: [] } as any;
-      if (endpoint.includes('/audit-logs')) return { auditLogs: [] } as any;
-      if (endpoint.includes('/feedback/rejection')) return { feedbackRecords: [] } as any;
-      
-      // Super fallback
-      return { 
-        students: [], jobs: [], applications: [], users: [], auditLogs: [], feedbackRecords: [], ...mockAnalytics 
-      } as any;
-    }
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -112,14 +97,6 @@ class ApiClient {
   // Auth: staff sign in through the SHO App, students through the LMS. Both
   // issue a JWT this server accepts on /api/placement/*.
   public async loginStaff(email: string, password: string): Promise<{ token: string }> {
-    if (email === 'kusasi@gmail.com' && password === 'Kusasi123') {
-      setToken('mock-token-kusasi');
-      return { token: 'mock-token-kusasi' };
-    }
-    if (email === 'boss@gmail.com' && password === '123456') {
-      setToken('mock-token-boss');
-      return { token: 'mock-token-boss' };
-    }
     const r = await this.request<{ token: string }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
     setToken(r.token);
     return r;
@@ -132,35 +109,6 @@ class ApiClient {
   public logout() { setToken(null); }
   /** Who the token belongs to, in placement terms. 403 for a student not yet approved. */
   public async me(): Promise<{ user: User; studentProfile?: StudentProfile }> {
-    const token = getToken();
-    if (token === 'mock-token-kusasi') {
-      return {
-        user: {
-          id: 'mock-kusasi',
-          email: 'kusasi@gmail.com',
-          fullName: 'kusasipasapugal',
-          role: 'PLACEMENT_OFFICER',
-          department: 'Placement Team',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          managedHere: true
-        }
-      };
-    }
-    if (token === 'mock-token-boss') {
-      return {
-        user: {
-          id: 'mock-boss',
-          email: 'boss@gmail.com',
-          fullName: 'NajadBoss',
-          role: 'MANAGEMENT',
-          department: 'Management Team',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          managedHere: true
-        }
-      };
-    }
     return this.request('/api/placement/me');
   }
 
@@ -196,13 +144,14 @@ class ApiClient {
   }
 
   public async resetPassword(userId: string): Promise<{ tempPassword: string; message: string }> {
-    // Attempt real endpoint, mock fallback if it fails or returns 404
-    try {
-      return await this.request(`/api/placement/admin/users/${userId}/reset-password`, { method: 'POST' });
-    } catch (e) {
-      const tempPassword = Math.random().toString(36).slice(-8) + "1!A";
-      return { tempPassword, message: "Password reset (mocked)." };
-    }
+    return this.request(`/api/placement/admin/users/${userId}/reset-password`, { method: 'POST' });
+  }
+
+  // The Resume Agent's model call. It goes through the server so the AI key
+  // stays there — see server/placement/services/resumeAi.js in SHO-PRODUCTION.
+  public async aiComplete(prompt: string): Promise<string> {
+    const r = await this.request<{ text: string }>('/api/placement/ai/complete', { method: 'POST', body: JSON.stringify({ prompt }) });
+    return r.text;
   }
 
   public async overrideEligibility(studentId: string, newStatus: EligibilityStatus, reason: string): Promise<{ student: StudentProfile; message: string }> {
@@ -354,6 +303,13 @@ class ApiClient {
   }
 
   // Jobs
+  // One job in full. getJobs() leaves the description out — it is 8.7 KB a row
+  // and made the directory take nine seconds to load — so the detail panel asks
+  // for the job it is showing.
+  public async getJob(id: string): Promise<{ job: JobListing }> {
+    return this.request(`/api/placement/jobs/${encodeURIComponent(id)}`);
+  }
+
   public async getJobs(params?: { sourceChannel?: string; school?: string; search?: string; category?: string; designation?: string }): Promise<{ jobs: JobListing[] }> {
     const searchParams = new URLSearchParams();
     if (params?.sourceChannel) searchParams.set('sourceChannel', params.sourceChannel);

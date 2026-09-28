@@ -198,8 +198,16 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
   };
 
   const handleSelectJob = async (job: JobListing) => {
+    // Open on the row we already have, then fill in the description. The list
+    // is fetched without descriptions — they are 8.7 KB each and made the
+    // directory take nine seconds — so the one being read is fetched on its own.
     setSelectedJob(job);
     setActiveTab('details');
+    if (!job.description) {
+      api.getJob(job.id)
+        .then(r => setSelectedJob(cur => (cur && cur.id === job.id ? { ...cur, ...r.job } : cur)))
+        .catch(() => { /* the panel keeps what the list gave it */ });
+    }
     setLoadingMatches(true);
     try {
       const res = await api.getJobMatches(job.id);
