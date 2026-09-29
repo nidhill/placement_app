@@ -26,7 +26,7 @@ const NON_TECH_TITLE_PATTERNS = [
   /\b(accountant|accounting|bookkeeper|auditor|payroll|tax specialist|accounts payable|accounts receivable)\b/i,
   /\b(receptionist|front desk|office assistant|office administrator|clerk|administrative assistant|secretary)\b/i,
   /\b(customer service|customer care|call center agent|bpo|contact center|guest service)\b/i,
-  /\b(marketing executive|content writer|copywriter|social media manager|growth marketer|digital marketing specialist|seo executive)\b/i,
+  /\b(marketing|paid ads|performance market\w*|ad specialist|media buyer|media planning|campaign specialist|ppc\b|sem\b|seo\b|social media|online reputation|orm\b|reputation management|reputation executive|content writer|copywriter|growth marketer|digital marketing|creative strategist|influencer)\b/i,
   /\b(operations executive|operations associate|warehouse|logistics coordinator|supply chain associate|delivery driver|dispatcher)\b/i,
   /\b(finance manager|financial analyst|investment banker|teller|loan officer|credit analyst)\b/i,
   /\b(cashier|retail associate|store manager|merchandiser|sales associate|counter attendant)\b/i,
@@ -67,7 +67,7 @@ const TECH_CATEGORY_RULES = [
   {
     category: "Data Analytics",
     titleRegex: /\b(data analyst|business intelligence|bi analyst|power bi|tableau analyst|sql analyst|data analytics)\b/i,
-    keywordRegex: /\b(power bi|tableau|sql|excel|data analysis|looker|metabase|dashboard)\b/i
+    keywordRegex: /\b(power bi|tableau|looker|metabase|exploratory data|data visualization|data analytics|business intelligence)\b/i
   },
   {
     category: "Cloud / DevOps",

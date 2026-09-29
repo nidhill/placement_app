@@ -47,6 +47,36 @@ import {
 import { extractResumeDataFromFile } from '../resume/aiService.ts';
 import { loadAllVersions } from '../resume/resumeStore.ts';
 import { ResumeData } from '../resume/types.ts';
+import { normalizeRole } from '../../lib/jobMatching.ts';
+
+export function getDisplayJobCategory(job: any): string {
+  const norm = normalizeRole(job.title || job.normalizedDesignation);
+  if (norm.domain === 'MARKETING_SALES') {
+    return 'Digital Marketing';
+  }
+  if (norm.domain === 'SALES_OPERATIONS') {
+    return 'Sales & Operations';
+  }
+  if (norm.domain === 'FULL_STACK') {
+    return 'Full Stack Development';
+  }
+  if (norm.domain === 'FRONTEND') {
+    return 'Frontend Development';
+  }
+  if (norm.domain === 'BACKEND') {
+    return 'Backend Development';
+  }
+  if (norm.domain === 'DATA_ANALYTICS') {
+    return 'Data Analytics';
+  }
+  if (norm.domain === 'DATA_ENGINEERING') {
+    return 'Data Engineering';
+  }
+  if (norm.domain === 'AI_ML') {
+    return 'AI / Machine Learning';
+  }
+  return job.category || 'Technology';
+}
 
 const DECLINE_REASON_OPTIONS: { value: ApplicationDeclineReason; label: string }[] = [
   { value: 'NOT_INTERESTED', label: '1. Not interested in this role or company' },
@@ -137,8 +167,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   const [jobsViewTab, setJobsViewTab] = useState<'recommended' | 'all'>('recommended');
   const [jobCategoryFilter, setJobCategoryFilter] = useState('ALL');
   const [jobDesignationFilter, setJobDesignationFilter] = useState('');
-  const [jobExperienceFilter, setJobExperienceFilter] = useState('ALL');
-  const [jobScoreFilter, setJobScoreFilter] = useState('ALL');
+  const [jobLocationFilter, setJobLocationFilter] = useState('');
+  const [jobWorkModeFilter, setJobWorkModeFilter] = useState('ALL');
   const [selectedJobForModal, setSelectedJobForModal] = useState<JobListing | null>(null);
   const [applyingJobId, setApplyingJobId] = useState<string | null>(null);
   const [applySuccessMessage, setApplySuccessMessage] = useState<string | null>(null);
@@ -588,6 +618,13 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             const mimeType = file.type || 'application/pdf';
             const extractedData = await extractResumeDataFromFile(base64Data, mimeType);
             localStorage.setItem(`extracted_resume_${currentStudentId}`, JSON.stringify(extractedData));
+            if (extractedData.personal?.targetRole) {
+              try {
+                await api.updateStudent(currentStudentId, { designation: extractedData.personal.targetRole });
+              } catch (syncErr) {
+                console.warn('Could not sync student designation:', syncErr);
+              }
+            }
             setResumeUploadSuccess(`"${file.name}" uploaded and AI analyzed successfully! Job matches have been updated.`);
           } catch (aiErr: any) {
             console.error('AI Extraction error:', aiErr);
@@ -880,11 +917,13 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 <Briefcase className="w-4 h-4 text-emerald-600" />
               </div>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-black text-foreground">{recommendedJobs.length}</span>
+                <span className="text-3xl font-black text-foreground">
+                  {recommendedJobs.filter(r => r.designationMatch && r.verdict !== 'NOT_MATCHED' && (r.matchScore ?? 0) >= 40).length}
+                </span>
                 <span className="text-xs text-emerald-600 font-semibold">Matching Profile</span>
               </div>
               <p className="text-[11px] text-slate-400 mt-1.5">
-                {allJobs.length} total tech positions available
+                {allJobs.length} total positions in directory
               </p>
             </div>
 
@@ -918,26 +957,30 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">Recommended Jobs</h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Matched with your skills & program ({recommendedJobs.length} jobs available)
+                      Matched with your skills & program ({recommendedJobs.filter(r => r.designationMatch && r.verdict !== 'NOT_MATCHED' && (r.matchScore ?? 0) >= 40).length} jobs available)
                     </p>
                   </div>
                   <button 
                     onClick={() => onNavigate && onNavigate('student_jobs')}
                     className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 cursor-pointer"
                   >
-                    Browse All ({recommendedJobs.length}) <ChevronRight className="w-3.5 h-3.5" />
+                    Browse All ({recommendedJobs.filter(r => r.designationMatch && r.verdict !== 'NOT_MATCHED' && (r.matchScore ?? 0) >= 40).length}) <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
                 <div className="space-y-3">
-                  {recommendedJobs.length === 0 ? (
-                    <div className="py-8 text-center text-xs text-slate-400">
-                      No matching job recommendations currently found.
-                    </div>
-                  ) : (
-                    recommendedJobs.slice(0, 50).map(rec => {
+                  {(() => {
+                    const dashboardRecs = recommendedJobs.filter(r => r.designationMatch && r.verdict !== 'NOT_MATCHED' && (r.matchScore ?? 0) >= 40);
+                    if (dashboardRecs.length === 0) {
+                      return (
+                        <div className="py-8 text-center text-xs text-slate-400">
+                          No matching job recommendations currently found for your domain. Explore all open jobs under Find Jobs.
+                        </div>
+                      );
+                    }
+                    return dashboardRecs.slice(0, 50).map(rec => {
                       const job = rec.job;
-                      const matchScore = rec.matchScore ?? 85;
+                      const matchScore = rec.matchScore ?? 0;
                       const matched = rec.matchedSkills || [];
                       const missing = rec.missingSkills || [];
 
@@ -947,9 +990,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                             <div>
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <h4 className="font-bold text-foreground text-xs sm:text-sm">{job.title}</h4>
-                                {job.category && (
+                                {getDisplayJobCategory(job) && (
                                   <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-100">
-                                    {job.category}
+                                    {getDisplayJobCategory(job)}
                                   </span>
                                 )}
                                 {job.sourceChannel === 'AI_JOB_SCRAPER' && (
@@ -971,11 +1014,15 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                               </div>
                             </div>
                             <div className="flex flex-col items-end shrink-0">
-                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-black">
+                              <span className={`px-2 py-0.5 rounded-md text-xs font-black ${
+                                matchScore >= 70 ? 'bg-emerald-100 text-emerald-800' :
+                                matchScore >= 40 ? 'bg-amber-100 text-amber-800' :
+                                'bg-slate-100 text-slate-600'
+                              }`}>
                                 {matchScore}% Match
                               </span>
                               <span className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">
-                                {rec.matchLevel || 'Good Match'}
+                                {rec.matchLevel || 'Low Match'}
                               </span>
                             </div>
                           </div>
@@ -1031,8 +1078,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                           </div>
                         </div>
                       );
-                    })
-                  )}
+                    });
+                  })()}
                 </div>
               </div>
             </div>
@@ -1631,7 +1678,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     : 'text-slate-600 hover:text-foreground'
                 }`}
               >
-                All Technology Jobs ({recommendedJobs.length})
+                Recommended for You ({recommendedJobs.filter(r => r.designationMatch && r.verdict !== 'NOT_MATCHED' && (r.matchScore ?? 0) >= 40).length})
               </button>
               <button
                 onClick={() => setJobsViewTab('all')}
@@ -1641,7 +1688,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     : 'text-slate-600 hover:text-foreground'
                 }`}
               >
-                HACA Jobs ({allJobs.filter(j => j.sourceChannel !== 'AI_JOB_SCRAPER' && j.sourceChannel !== 'ATS_JOB_API').length})
+                HACA Jobs ({allJobs.filter(j => j.status === 'ACTIVE' && j.sourceChannel !== 'AI_JOB_SCRAPER' && j.sourceChannel !== 'ATS_JOB_API').length})
               </button>
             </div>
           </div>
@@ -1696,45 +1743,41 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               />
             </div>
 
-            {/* Experience Filter */}
+            {/* Location Finding Bar */}
+            <div className="relative w-40">
+              <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Location (city/state)..."
+                value={jobLocationFilter}
+                onChange={e => setJobLocationFilter(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-slate-800"
+              />
+            </div>
+
+            {/* Work Mode Filter */}
             <div className="relative">
               <select
-                value={jobExperienceFilter}
-                onChange={e => setJobExperienceFilter(e.target.value)}
-                className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
+                value={jobWorkModeFilter}
+                onChange={e => setJobWorkModeFilter(e.target.value)}
+                className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer font-medium"
               >
-                <option value="ALL">Experience: All</option>
-                <option value="ENTRY">Entry / Fresh</option>
-                <option value="EXPERIENCED">Experienced</option>
+                <option value="ALL">Work Mode: All</option>
+                <option value="REMOTE">Remote</option>
+                <option value="HYBRID">Hybrid</option>
+                <option value="ON_SITE">On-site / In-Office</option>
               </select>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* Match Score Filter (applicable when viewing recommendations) */}
-            {jobsViewTab === 'recommended' && (
-              <div className="relative">
-                <select
-                  value={jobScoreFilter}
-                  onChange={e => setJobScoreFilter(e.target.value)}
-                  className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer font-medium"
-                >
-                  <option value="ALL">Match: All Levels</option>
-                  <option value="80">80%+ Excellent Match</option>
-                  <option value="65">65%+ Good Match</option>
-                  <option value="50">50%+ Partial Match</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            )}
-
-            {(jobSearch || jobCategoryFilter !== 'ALL' || jobDesignationFilter || jobExperienceFilter !== 'ALL' || jobScoreFilter !== 'ALL') && (
+            {(jobSearch || jobCategoryFilter !== 'ALL' || jobDesignationFilter || jobLocationFilter || jobWorkModeFilter !== 'ALL') && (
               <button
                 onClick={() => {
                   setJobSearch('');
                   setJobCategoryFilter('ALL');
                   setJobDesignationFilter('');
-                  setJobExperienceFilter('ALL');
-                  setJobScoreFilter('ALL');
+                  setJobLocationFilter('');
+                  setJobWorkModeFilter('ALL');
                 }}
                 className="text-[11px] text-slate-500 hover:text-slate-800 underline ml-auto cursor-pointer"
               >
@@ -1745,24 +1788,28 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
           {/* Active Results Summary Banner */}
           {(() => {
-            const filteredRecs = recommendedJobs.filter(rec => {
+            const compatibleRecs = recommendedJobs.filter(r => r.designationMatch && r.verdict !== 'NOT_MATCHED' && (r.matchScore ?? 0) >= 40);
+            const filteredRecs = compatibleRecs.filter(rec => {
               const job = rec.job;
               if (job.status !== 'ACTIVE') return false;
-              if (jobCategoryFilter !== 'ALL' && job.category !== jobCategoryFilter) return false;
+              if (jobCategoryFilter !== 'ALL' && getDisplayJobCategory(job) !== jobCategoryFilter && job.category !== jobCategoryFilter) return false;
               if (jobDesignationFilter.trim()) {
                 const df = jobDesignationFilter.toLowerCase().trim();
                 const desigMatch = (job.normalizedDesignation || '').toLowerCase().includes(df) ||
                                    job.title.toLowerCase().includes(df);
                 if (!desigMatch) return false;
               }
-              if (jobExperienceFilter !== 'ALL') {
-                const exp = (job.experienceRequirement || '').toLowerCase();
-                if (jobExperienceFilter === 'ENTRY' && !exp.includes('0') && !exp.includes('fresh') && !exp.includes('entry')) return false;
-                if (jobExperienceFilter === 'EXPERIENCED' && (exp.includes('0-1') || exp.includes('fresh') || exp.includes('entry'))) return false;
+              if (jobLocationFilter.trim()) {
+                const locQ = jobLocationFilter.toLowerCase().trim();
+                if (!(job.location || '').toLowerCase().includes(locQ)) return false;
               }
-              if (jobScoreFilter !== 'ALL') {
-                const minScore = parseInt(jobScoreFilter, 10);
-                if ((rec.matchScore ?? 0) < minScore) return false;
+              if (jobWorkModeFilter !== 'ALL') {
+                const combined = `${job.location || ''} ${job.title || ''} ${job.description || ''}`.toLowerCase();
+                const isRemote = combined.includes('remote') || combined.includes('work from home') || combined.includes('wfh');
+                const isHybrid = combined.includes('hybrid');
+                if (jobWorkModeFilter === 'REMOTE' && !isRemote) return false;
+                if (jobWorkModeFilter === 'HYBRID' && !isHybrid) return false;
+                if (jobWorkModeFilter === 'ON_SITE' && (isRemote || isHybrid)) return false;
               }
               if (jobSearch.trim()) {
                 const q = jobSearch.toLowerCase();
@@ -1778,17 +1825,24 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             const filteredAll = allJobs.filter(job => {
               if (job.status !== 'ACTIVE') return false;
               if (job.sourceChannel === 'AI_JOB_SCRAPER' || job.sourceChannel === 'ATS_JOB_API') return false;
-              if (jobCategoryFilter !== 'ALL' && job.category !== jobCategoryFilter) return false;
+              if (jobCategoryFilter !== 'ALL' && getDisplayJobCategory(job) !== jobCategoryFilter && job.category !== jobCategoryFilter) return false;
               if (jobDesignationFilter.trim()) {
                 const df = jobDesignationFilter.toLowerCase().trim();
                 const desigMatch = (job.normalizedDesignation || '').toLowerCase().includes(df) ||
                                    job.title.toLowerCase().includes(df);
                 if (!desigMatch) return false;
               }
-              if (jobExperienceFilter !== 'ALL') {
-                const exp = (job.experienceRequirement || '').toLowerCase();
-                if (jobExperienceFilter === 'ENTRY' && !exp.includes('0') && !exp.includes('fresh') && !exp.includes('entry')) return false;
-                if (jobExperienceFilter === 'EXPERIENCED' && (exp.includes('0-1') || exp.includes('fresh') || exp.includes('entry'))) return false;
+              if (jobLocationFilter.trim()) {
+                const locQ = jobLocationFilter.toLowerCase().trim();
+                if (!(job.location || '').toLowerCase().includes(locQ)) return false;
+              }
+              if (jobWorkModeFilter !== 'ALL') {
+                const combined = `${job.location || ''} ${job.title || ''} ${job.description || ''}`.toLowerCase();
+                const isRemote = combined.includes('remote') || combined.includes('work from home') || combined.includes('wfh');
+                const isHybrid = combined.includes('hybrid');
+                if (jobWorkModeFilter === 'REMOTE' && !isRemote) return false;
+                if (jobWorkModeFilter === 'HYBRID' && !isHybrid) return false;
+                if (jobWorkModeFilter === 'ON_SITE' && (isRemote || isHybrid)) return false;
               }
               if (jobSearch.trim()) {
                 const q = jobSearch.toLowerCase();
@@ -1801,14 +1855,21 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               return true;
             });
 
+            const totalHacaJobs = allJobs.filter(j => j.status === 'ACTIVE' && j.sourceChannel !== 'AI_JOB_SCRAPER' && j.sourceChannel !== 'ATS_JOB_API');
             const currentCount = jobsViewTab === 'recommended' ? filteredRecs.length : filteredAll.length;
-            const totalCount = jobsViewTab === 'recommended' ? recommendedJobs.length : allJobs.filter(j => j.sourceChannel !== 'AI_JOB_SCRAPER' && j.sourceChannel !== 'ATS_JOB_API').length;
+            const totalCount = jobsViewTab === 'recommended' 
+              ? compatibleRecs.length
+              : totalHacaJobs.length;
 
             return (
               <div className="flex items-center justify-between px-1 py-1 text-xs text-slate-500 font-medium">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span>Showing <strong>{currentCount}</strong> of <strong>{totalCount}</strong> verified India technology jobs</span>
+                  {jobsViewTab === 'recommended' ? (
+                    <span>Showing <strong>{currentCount}</strong> of <strong>{totalCount}</strong> matching opportunities for your profile</span>
+                  ) : (
+                    <span>Showing <strong>{currentCount}</strong> of <strong>{totalCount}</strong> verified HACA placement opportunities</span>
+                  )}
                 </span>
                 {jobSearch && (
                   <span className="text-[11px] text-slate-400">Search results for "{jobSearch}"</span>
@@ -1818,48 +1879,73 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           })()}
 
           {/* Job listings (Recommended Tab) */}
-          {jobsViewTab === 'recommended' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {recommendedJobs
-                .filter(rec => {
-                  const job = rec.job;
-                  if (job.status !== 'ACTIVE') return false;
+          {jobsViewTab === 'recommended' && (() => {
+            const compatibleRecs = recommendedJobs.filter(r => r.designationMatch && r.verdict !== 'NOT_MATCHED' && (r.matchScore ?? 0) >= 40);
+            const displayRecs = compatibleRecs.filter(rec => {
+              const job = rec.job;
+              if (job.status !== 'ACTIVE') return false;
 
-                  if (jobCategoryFilter !== 'ALL' && job.category !== jobCategoryFilter) return false;
+              if (jobCategoryFilter !== 'ALL' && getDisplayJobCategory(job) !== jobCategoryFilter && job.category !== jobCategoryFilter) return false;
 
-                  if (jobDesignationFilter.trim()) {
-                    const df = jobDesignationFilter.toLowerCase().trim();
-                    const desigMatch = (job.normalizedDesignation || '').toLowerCase().includes(df) ||
-                                       job.title.toLowerCase().includes(df);
-                    if (!desigMatch) return false;
-                  }
+              if (jobDesignationFilter.trim()) {
+                const df = jobDesignationFilter.toLowerCase().trim();
+                const desigMatch = (job.normalizedDesignation || '').toLowerCase().includes(df) ||
+                                   job.title.toLowerCase().includes(df);
+                if (!desigMatch) return false;
+              }
 
-                  if (jobExperienceFilter !== 'ALL') {
-                    const exp = (job.experienceRequirement || '').toLowerCase();
-                    if (jobExperienceFilter === 'ENTRY' && !exp.includes('0') && !exp.includes('fresh') && !exp.includes('entry')) return false;
-                    if (jobExperienceFilter === 'EXPERIENCED' && (exp.includes('0-1') || exp.includes('fresh') || exp.includes('entry'))) return false;
-                  }
+              if (jobLocationFilter.trim()) {
+                const locQ = jobLocationFilter.toLowerCase().trim();
+                if (!(job.location || '').toLowerCase().includes(locQ)) return false;
+              }
 
-                  if (jobScoreFilter !== 'ALL') {
-                    const minScore = parseInt(jobScoreFilter, 10);
-                    if ((rec.matchScore ?? 0) < minScore) return false;
-                  }
+              if (jobWorkModeFilter !== 'ALL') {
+                const combined = `${job.location || ''} ${job.title || ''} ${job.description || ''}`.toLowerCase();
+                const isRemote = combined.includes('remote') || combined.includes('work from home') || combined.includes('wfh');
+                const isHybrid = combined.includes('hybrid');
+                if (jobWorkModeFilter === 'REMOTE' && !isRemote) return false;
+                if (jobWorkModeFilter === 'HYBRID' && !isHybrid) return false;
+                if (jobWorkModeFilter === 'ON_SITE' && (isRemote || isHybrid)) return false;
+              }
 
-                  if (jobSearch.trim()) {
-                    const q = jobSearch.toLowerCase();
-                    const inTitle = job.title.toLowerCase().includes(q);
-                    const inComp = job.company.toLowerCase().includes(q);
-                    const inLoc = job.location.toLowerCase().includes(q);
-                    const inSkills = job.requiredSkills.some((s: string) => s.toLowerCase().includes(q));
-                    if (!inTitle && !inComp && !inLoc && !inSkills) return false;
-                  }
+              if (jobSearch.trim()) {
+                const q = jobSearch.toLowerCase();
+                const inTitle = job.title.toLowerCase().includes(q);
+                const inComp = job.company.toLowerCase().includes(q);
+                const inLoc = job.location.toLowerCase().includes(q);
+                const inSkills = job.requiredSkills.some((s: string) => s.toLowerCase().includes(q));
+                if (!inTitle && !inComp && !inLoc && !inSkills) return false;
+              }
 
-                  return true;
-                })
-                .map(rec => {
+              return true;
+            });
+
+            if (displayRecs.length === 0) {
+              return (
+                <div className="bg-white p-8 rounded-2xl border border-border text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                    <Briefcase className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-bold text-foreground text-sm">No Matching Recommendations Found</h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    We filtered out non-matching positions so you only see roles aligned with your field. Switch to <strong>HACA Jobs</strong> to browse internal placement drives.
+                  </p>
+                  <button
+                    onClick={() => setJobsViewTab('all')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+                  >
+                    View HACA Jobs
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {displayRecs.map(rec => {
                   const job = rec.job;
                   const alreadyApplied = myApplications.some(a => a.jobId === job.id && a.status === 'APPLIED');
-                  const matchScore = rec.matchScore ?? 80;
+                  const matchScore = rec.matchScore ?? 0;
 
                   return (
                     <div key={job.id} className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col justify-between hover:border-primary/40 transition-colors space-y-3">
@@ -1869,9 +1955,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <h3 className="font-bold text-foreground text-sm">{job.title}</h3>
-                              {job.category && (
+                              {getDisplayJobCategory(job) && (
                                 <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-100">
-                                  {job.category}
+                                  {getDisplayJobCategory(job)}
                                 </span>
                               )}
                               {job.sourceChannel === 'AI_JOB_SCRAPER' && (
@@ -1892,11 +1978,15 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                           </div>
 
                           <div className="flex flex-col items-end shrink-0">
-                            <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-black">
+                            <span className={`px-2.5 py-0.5 rounded-md text-xs font-black ${
+                              matchScore >= 70 ? 'bg-emerald-100 text-emerald-800' :
+                              matchScore >= 40 ? 'bg-amber-100 text-amber-800' :
+                              'bg-slate-100 text-slate-600'
+                            }`}>
                               {matchScore}% Match
                             </span>
                             <span className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">
-                              {rec.matchLevel || 'Good Match'}
+                              {rec.matchLevel || 'Low Match'}
                             </span>
                           </div>
                         </div>
@@ -1920,15 +2010,21 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
                         {/* Match Explanation Box */}
                         <div className="p-2.5 bg-muted rounded-lg border border-border/70 text-[11px] space-y-1 mt-2">
-                          <span className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">Why this job matches you:</span>
+                          <span className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">
+                            {rec.verdict === 'NOT_MATCHED' ? 'Role & Domain Alignment:' : 'Why this job matches you:'}
+                          </span>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-slate-600">
-                            <div className="flex items-center gap-1 text-slate-800 font-medium">
-                              <Check className="w-3 h-3 text-emerald-600 shrink-0" />
-                              <span>Role: {rec.designationExplanation || job.normalizedDesignation || 'Compatible role'}</span>
+                            <div className={`flex items-center gap-1 font-medium ${rec.designationMatch ? 'text-slate-800' : 'text-amber-700'}`}>
+                              {rec.designationMatch ? (
+                                <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                              ) : (
+                                <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                              )}
+                              <span>Role: {rec.designationExplanation || job.normalizedDesignation || 'Role assessment'}</span>
                             </div>
                             <div className="flex items-center gap-1 text-slate-800 font-medium">
                               <Check className="w-3 h-3 text-emerald-600 shrink-0" />
-                              <span>Program: {rec.programExplanation || 'Compatible curriculum'}</span>
+                              <span>Program: {rec.programExplanation || 'Curriculum assessment'}</span>
                             </div>
                             {(rec.matchedSkills || []).map((sk: string) => (
                               <div key={sk} className="flex items-center gap-1 text-emerald-700 font-medium">
@@ -1972,43 +2068,67 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     </div>
                   );
                 })}
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
           {/* Job listings (HACA Jobs Tab) */}
-          {jobsViewTab === 'all' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {allJobs
-                .filter(job => {
-                  if (job.status !== 'ACTIVE') return false;
-                  if (job.sourceChannel === 'AI_JOB_SCRAPER' || job.sourceChannel === 'ATS_JOB_API') return false;
-                  if (jobCategoryFilter !== 'ALL' && job.category !== jobCategoryFilter) return false;
+          {jobsViewTab === 'all' && (() => {
+            const hacaJobs = allJobs.filter(job => {
+              if (job.status !== 'ACTIVE') return false;
+              if (job.sourceChannel === 'AI_JOB_SCRAPER' || job.sourceChannel === 'ATS_JOB_API') return false;
+              if (jobCategoryFilter !== 'ALL' && getDisplayJobCategory(job) !== jobCategoryFilter && job.category !== jobCategoryFilter) return false;
 
-                  if (jobDesignationFilter.trim()) {
-                    const df = jobDesignationFilter.toLowerCase().trim();
-                    const desigMatch = (job.normalizedDesignation || '').toLowerCase().includes(df) ||
-                                       job.title.toLowerCase().includes(df);
-                    if (!desigMatch) return false;
-                  }
+              if (jobDesignationFilter.trim()) {
+                const df = jobDesignationFilter.toLowerCase().trim();
+                const desigMatch = (job.normalizedDesignation || '').toLowerCase().includes(df) ||
+                                   job.title.toLowerCase().includes(df);
+                if (!desigMatch) return false;
+              }
 
-                  if (jobExperienceFilter !== 'ALL') {
-                    const exp = (job.experienceRequirement || '').toLowerCase();
-                    if (jobExperienceFilter === 'ENTRY' && !exp.includes('0') && !exp.includes('fresh') && !exp.includes('entry')) return false;
-                    if (jobExperienceFilter === 'EXPERIENCED' && (exp.includes('0-1') || exp.includes('fresh') || exp.includes('entry'))) return false;
-                  }
+              if (jobLocationFilter.trim()) {
+                const locQ = jobLocationFilter.toLowerCase().trim();
+                if (!(job.location || '').toLowerCase().includes(locQ)) return false;
+              }
 
-                  if (jobSearch.trim()) {
-                    const q = jobSearch.toLowerCase();
-                    const inTitle = job.title.toLowerCase().includes(q);
-                    const inComp = job.company.toLowerCase().includes(q);
-                    const inLoc = job.location.toLowerCase().includes(q);
-                    const inSkills = job.requiredSkills.some((s: string) => s.toLowerCase().includes(q));
-                    if (!inTitle && !inComp && !inLoc && !inSkills) return false;
-                  }
+              if (jobWorkModeFilter !== 'ALL') {
+                const combined = `${job.location || ''} ${job.title || ''} ${job.description || ''}`.toLowerCase();
+                const isRemote = combined.includes('remote') || combined.includes('work from home') || combined.includes('wfh');
+                const isHybrid = combined.includes('hybrid');
+                if (jobWorkModeFilter === 'REMOTE' && !isRemote) return false;
+                if (jobWorkModeFilter === 'HYBRID' && !isHybrid) return false;
+                if (jobWorkModeFilter === 'ON_SITE' && (isRemote || isHybrid)) return false;
+              }
 
-                  return true;
-                })
-                .map(job => {
+              if (jobSearch.trim()) {
+                const q = jobSearch.toLowerCase();
+                const inTitle = job.title.toLowerCase().includes(q);
+                const inComp = job.company.toLowerCase().includes(q);
+                const inLoc = job.location.toLowerCase().includes(q);
+                const inSkills = job.requiredSkills.some((s: string) => s.toLowerCase().includes(q));
+                if (!inTitle && !inComp && !inLoc && !inSkills) return false;
+              }
+
+              return true;
+            });
+
+            if (hacaJobs.length === 0) {
+              return (
+                <div className="bg-white p-8 rounded-2xl border border-border text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                    <Briefcase className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-bold text-foreground text-sm">No HACA Jobs Found</h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    No exclusive HACA campus drives or referral positions match your current search and filters.
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {hacaJobs.map(job => {
                   const alreadyApplied = myApplications.some(a => a.jobId === job.id && a.status === 'APPLIED');
                   const matchingRec = recommendedJobs.find(r => r.job.id === job.id);
 
@@ -2019,9 +2139,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <h3 className="font-bold text-foreground text-sm">{job.title}</h3>
-                              {job.category && (
+                              {getDisplayJobCategory(job) && (
                                 <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-100">
-                                  {job.category}
+                                  {getDisplayJobCategory(job)}
                                 </span>
                               )}
                               {job.sourceChannel === 'AI_JOB_SCRAPER' && (
@@ -2042,7 +2162,11 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                           </div>
 
                           {matchingRec && (
-                            <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-black shrink-0">
+                            <span className={`px-2 py-0.5 rounded-md text-xs font-black shrink-0 ${
+                              (matchingRec.matchScore ?? 0) >= 70 ? 'bg-emerald-100 text-emerald-800' :
+                              (matchingRec.matchScore ?? 0) >= 40 ? 'bg-amber-100 text-amber-800' :
+                              'bg-slate-100 text-slate-600'
+                            }`}>
                               {matchingRec.matchScore}% Match
                             </span>
                           )}
@@ -2068,15 +2192,25 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                         {/* Match Explanation Box (Added for HACA Jobs tab too) */}
                         {matchingRec && (
                           <div className="p-2.5 bg-muted rounded-lg border border-border/70 text-[11px] space-y-1 mt-2">
-                            <span className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">Why this job matches you:</span>
+                            <span className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">
+                              {matchingRec.verdict === 'NOT_MATCHED' ? 'Role & Domain Alignment:' : 'Why this job matches you:'}
+                            </span>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-slate-600">
-                              <div className="flex items-center gap-1 text-slate-800 font-medium">
-                                <Check className="w-3 h-3 text-emerald-600 shrink-0" />
-                                <span>Role: {matchingRec.designationExplanation || job.normalizedDesignation || 'Compatible role'}</span>
+                              <div className={`flex items-center gap-1 font-medium ${matchingRec.designationMatch ? 'text-slate-800' : 'text-amber-700'}`}>
+                                {matchingRec.designationMatch ? (
+                                  <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                                ) : (
+                                  <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                                )}
+                                <span>Role: {matchingRec.designationExplanation || job.normalizedDesignation || 'Role assessment'}</span>
                               </div>
                               <div className="flex items-center gap-1 text-slate-800 font-medium">
-                                <Check className="w-3 h-3 text-emerald-600 shrink-0" />
-                                <span>Program: {matchingRec.programExplanation || 'Compatible curriculum'}</span>
+                                {matchingRec.designationMatch ? (
+                                  <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                                ) : (
+                                  <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                                )}
+                                <span>Program: {matchingRec.programExplanation || 'Curriculum assessment'}</span>
                               </div>
                               {(matchingRec.matchedSkills || []).map((sk: string) => (
                                 <div key={sk} className="flex items-center gap-1 text-emerald-700 font-medium">
@@ -2121,8 +2255,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     </div>
                   );
                 })}
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
         </div>
       )}

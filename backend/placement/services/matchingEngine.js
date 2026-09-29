@@ -151,26 +151,47 @@ class JobMatchingService {
       experienceExplanation = `\u26A0 Requires ${job.experienceRequirement}`;
     }
     const experienceScore = Math.round(expRatio * (MATCHING_WEIGHTS.experience * 100));
-    let totalScore = designationScore + skillsScore + programScore + experienceScore;
-    totalScore = Math.min(100, Math.max(15, totalScore));
+    let totalScore = 0;
     let matchLevel = "Low Match";
-    if (totalScore >= 80) matchLevel = "Excellent Match";
-    else if (totalScore >= 65) matchLevel = "Good Match";
-    else if (totalScore >= 50) matchLevel = "Partial Match";
-    else matchLevel = "Low Match";
     let verdict = "NOT_MATCHED";
-    if (totalScore >= 65) verdict = "MATCHED";
-    else if (totalScore >= 45) verdict = "PARTIALLY_MATCHED";
-    else verdict = "NOT_MATCHED";
+
+    let finalSkillsScore = skillsScore;
+    let finalProgramScore = programScore;
+    let finalExpScore = experienceScore;
+
+    if (!designationMatch) {
+      finalSkillsScore = 0;
+      finalProgramScore = 0;
+      finalExpScore = 0;
+      totalScore = 0;
+      matchLevel = "Low Match";
+      verdict = "NOT_MATCHED";
+      missingSkills.push(...jobReqSkills);
+      matchedSkills.length = 0;
+    } else {
+      totalScore = designationScore + finalSkillsScore + finalProgramScore + finalExpScore;
+      totalScore = Math.min(100, Math.max(0, totalScore));
+      if (totalScore >= 80) matchLevel = "Excellent Match";
+      else if (totalScore >= 65) matchLevel = "Good Match";
+      else if (totalScore >= 50) matchLevel = "Partial Match";
+      else matchLevel = "Low Match";
+
+      if (totalScore >= 65) verdict = "MATCHED";
+      else if (totalScore >= 45) verdict = "PARTIALLY_MATCHED";
+      else verdict = "NOT_MATCHED";
+    }
+
     let explanation = `${matchLevel} (${totalScore}%): `;
     if (designationMatch) {
       explanation += `Target role (${jobNormalized}) matches student profile. `;
-    }
-    if (matchedSkills.length > 0) {
-      explanation += `Matched: ${matchedSkills.join(", ")}. `;
-    }
-    if (missingSkills.length > 0) {
-      explanation += `Missing: ${missingSkills.join(", ")}.`;
+      if (matchedSkills.length > 0) {
+        explanation += `Matched: ${matchedSkills.join(", ")}. `;
+      }
+      if (missingSkills.length > 0) {
+        explanation += `Missing: ${missingSkills.join(", ")}.`;
+      }
+    } else {
+      explanation += designationExplanation || `Role mismatch between student profile and ${jobNormalized}.`;
     }
     return {
       job,
@@ -178,13 +199,13 @@ class JobMatchingService {
       matchScore: totalScore,
       matchLevel,
       designationScore,
-      skillsScore,
-      programScore,
-      experienceScore,
+      skillsScore: finalSkillsScore,
+      programScore: finalProgramScore,
+      experienceScore: finalExpScore,
       matchedSkills,
       missingSkills,
-      schoolMatch: true,
-      programMatch,
+      schoolMatch: designationMatch,
+      programMatch: designationMatch ? programMatch : false,
       designationMatch,
       experienceMatch: expVerdict,
       explanation,

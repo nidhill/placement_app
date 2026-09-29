@@ -283,23 +283,112 @@ class ApiClient {
   }
 
   public async getStudentRecommendations(id: string): Promise<{ recommendations: JobMatchResult[] }> {
+    let resumeData: any = null;
+
+    // 1. Check extracted_resume_{id}
     const extractedStr = localStorage.getItem(`extracted_resume_${id}`);
     if (extractedStr) {
       try {
-        const resumeData = JSON.parse(extractedStr);
+        resumeData = JSON.parse(extractedStr);
+      } catch (e) {
+        console.warn('Failed to parse extracted_resume:', e);
+      }
+    }
+
+    // 2. Check resume builder versions
+    if (!resumeData) {
+      const versionsStr = localStorage.getItem(`haca_resume_${id}`);
+      if (versionsStr) {
+        try {
+          const versions = JSON.parse(versionsStr);
+          if (Array.isArray(versions) && versions.length > 0 && versions[0]?.data) {
+            resumeData = versions[0].data;
+          }
+        } catch (e) {
+          console.warn('Failed to parse haca_resume versions:', e);
+        }
+      }
+    }
+
+    // 3. Fallback: construct candidate data from StudentProfile
+    if (!resumeData) {
+      try {
+        const studentRes = await this.getStudent(id);
+        const student = studentRes?.student;
+        if (student) {
+          resumeData = {
+            personal: {
+              fullName: student.fullName || '',
+              targetRole: student.designation || student.academic?.course || student.program || '',
+              email: student.email || '',
+              phone: student.phone || '',
+              city: '', state: '', country: '',
+              linkedin: student.linkedinUrl || '',
+              github: '',
+              portfolio: student.portfolioUrl || ''
+            },
+            skills: {
+              programming: student.academic?.skills || [],
+              frameworks: [],
+              ai_ml: [],
+              generative_ai: [],
+              databases: [],
+              cloud: [],
+              devops: [],
+              tools: [],
+              web_technologies: [],
+              other: []
+            },
+            experience: [],
+            projects: (student.academic?.projects || []).map((p: any) => ({
+              name: p.title || p.name || '',
+              role: student.designation || '',
+              description: p.description || '',
+              technologies: p.techStack || [],
+              highlights: [],
+              githubUrl: p.githubUrl || '',
+              liveDemoUrl: '',
+              startDate: '',
+              endDate: ''
+            })),
+            summary: '',
+            education: [],
+            certifications: [],
+            achievements: [],
+            languages: []
+          };
+        }
+      } catch (err) {
+        console.warn('Could not construct resume from profile:', err);
+      }
+    }
+
+    // 4. Calculate deterministic match with matchJobToResume
+    if (resumeData) {
+      try {
         const jobsRes = await this.getJobs();
         const activeJobs = jobsRes.jobs.filter(j => j.status === 'ACTIVE');
         const recommendations = activeJobs
           .map(job => matchJobToResume(job, resumeData))
           .sort((a, b) => b.matchScore - a.matchScore)
-          .slice(0, 100); // Return up to 100 jobs to match backend behavior
+          .slice(0, 100);
 
         return { recommendations };
       } catch (err) {
         console.error("Local job matching failed, falling back to API", err);
       }
     }
-    return this.request(`/api/placement/students/${id}/recommendations`);
+
+    // 5. Fallback to API endpoint, re-scoring any returned jobs for domain consistency
+    const res = await this.request<{ recommendations: JobMatchResult[] }>(`/api/placement/students/${id}/recommendations`);
+    if (res?.recommendations && resumeData) {
+      return {
+        recommendations: res.recommendations
+          .map(r => matchJobToResume(r.job, resumeData))
+          .sort((a, b) => b.matchScore - a.matchScore)
+      };
+    }
+    return res;
   }
 
   // Jobs

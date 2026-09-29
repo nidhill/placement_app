@@ -24,8 +24,140 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLi
 //
 // server/placement/services/resumeAi.js sends the identical request: same model,
 // same temperature, same response_format. Nothing is lost by going through it.
+async function callGroqDirect(prompt: string): Promise<string> {
+  const apiKey = (import.meta as any).env?.GROQ_API_KEY || (import.meta as any).env?.VITE_GROQ_API_KEY || '';
+  if (!apiKey) {
+    throw new Error('Groq API key is not configured');
+  }
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'openai/gpt-oss-120b',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2
+    })
+  });
+
+  if (!response.ok) {
+    const fallbackRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-oss-20b',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2
+      })
+    });
+    if (!fallbackRes.ok) {
+      throw new Error(`Groq AI request failed (${response.status})`);
+    }
+    const fbData = await fallbackRes.json();
+    return fbData.choices[0].message.content;
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
 async function callGemini(prompt: string): Promise<string> {
-  return api.aiComplete(prompt);
+  try {
+    return await api.aiComplete(prompt);
+  } catch (err) {
+    console.warn("Server AI complete failed, falling back to direct Groq completion:", err);
+    return callGroqDirect(prompt);
+  }
+}
+
+export function parseResumeLocallyFromText(documentText: string): Partial<ResumeData> {
+  const lower = documentText.toLowerCase();
+
+  let targetRole = 'Software Developer';
+  if (/\b(data analytics|data analyst|business data analyst|bi analyst|power bi analyst|tableau analyst|sql analyst)\b/i.test(lower)) {
+    targetRole = 'Data Analyst';
+  } else if (/\b(full[\s-]?stack|mern|mean)\b/i.test(lower)) {
+    targetRole = 'Full Stack Developer';
+  } else if (/\b(front[\s-]?end|frontend|react)\b/i.test(lower)) {
+    targetRole = 'Frontend Developer';
+  } else if (/\b(python developer|django)\b/i.test(lower)) {
+    targetRole = 'Python Developer';
+  }
+
+  const progSkills: string[] = [];
+  const toolSkills: string[] = [];
+  const dbSkills: string[] = [];
+  const otherSkills: string[] = [];
+
+  const check = (regex: RegExp, list: string[], val: string) => {
+    if (regex.test(documentText)) list.push(val);
+  };
+
+  check(/\bpython\b/i, progSkills, 'Python');
+  check(/\bsql\b/i, progSkills, 'SQL');
+  check(/\bjavascript\b|\bjs\b/i, progSkills, 'JavaScript');
+  check(/\btypescript\b|\bts\b/i, progSkills, 'TypeScript');
+  check(/\br\b/i, progSkills, 'R');
+  check(/\bjava\b/i, progSkills, 'Java');
+  check(/\bc\+\+\b/i, progSkills, 'C++');
+
+  check(/\bpower[\s-]?bi\b/i, toolSkills, 'Power BI');
+  check(/\btableau\b/i, toolSkills, 'Tableau');
+  check(/\bexcel\b/i, toolSkills, 'Excel');
+  check(/\bgit\b|\bgithub\b/i, toolSkills, 'Git');
+  check(/\bdocker\b/i, toolSkills, 'Docker');
+
+  check(/\bpostgresql\b|\bpostgres\b/i, dbSkills, 'PostgreSQL');
+  check(/\bmysql\b/i, dbSkills, 'MySQL');
+  check(/\bmongodb\b|\bmongo\b/i, dbSkills, 'MongoDB');
+
+  check(/\bdata visualization\b/i, otherSkills, 'Data Visualization');
+  check(/\bexploratory data analysis\b|\beda\b/i, otherSkills, 'EDA');
+  check(/\bstatistics\b/i, otherSkills, 'Statistics');
+  check(/\bpandas\b/i, otherSkills, 'Pandas');
+  check(/\bnumpy\b/i, otherSkills, 'NumPy');
+
+  return {
+    personal: {
+      fullName: '',
+      email: '',
+      phone: '',
+      linkedin: '',
+      github: '',
+      portfolio: '',
+      city: '',
+      state: '',
+      country: '',
+      nationality: '',
+      googleScholar: '',
+      otherLink: '',
+      targetRole
+    },
+    summary: documentText.slice(0, 300),
+    skills: {
+      programming: progSkills,
+      frameworks: [],
+      ai_ml: [],
+      generative_ai: [],
+      databases: dbSkills,
+      cloud: [],
+      devops: [],
+      tools: toolSkills,
+      web_technologies: [],
+      other: otherSkills
+    },
+    experience: [],
+    projects: [],
+    education: [],
+    certifications: [],
+    achievements: [],
+    languages: []
+  };
 }
 
 async function extractTextFromPdfBase64(base64Data: string): Promise<string> {
@@ -407,16 +539,37 @@ Rules:
 3. For dates, try to format them as YYYY-MM if possible, otherwise keep the original string.
 4. Categorize skills appropriately into the provided categories.
 5. Extract bullet points accurately into 'responsibilities' and 'achievements'.
+6. CRUCIAL: Determine and populate 'personal.targetRole' with the candidate's primary job title or domain (e.g., 'Data Analyst', 'Full Stack Developer', 'Frontend Developer', 'Python Developer', 'UI/UX Designer', 'Mobile Developer', 'QA Engineer', etc.) inferred from their resume header, summary, projects, or primary skills. Never leave targetRole empty if the domain is identifiable.
   `.trim();
 
-  const raw = await callGeminiWithFile(prompt, base64Data, mimeType);
+  let documentText = '';
   try {
-    const jsonStr = raw.substring(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
-    return JSON.parse(jsonStr || raw);
+    if (mimeType.includes('pdf')) {
+      documentText = await extractTextFromPdfBase64(base64Data);
+    } else {
+      documentText = window.atob(base64Data);
+    }
   } catch (err) {
-    console.error('Failed to parse Gemini extracted JSON:', raw);
-    throw new Error('Failed to parse the extracted resume data into structured format.');
+    console.warn('Text extraction issue:', err);
   }
+
+  try {
+    const raw = await callGeminiWithFile(prompt, base64Data, mimeType);
+    const jsonStr = raw.substring(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+    const parsed = JSON.parse(jsonStr || raw);
+    if (parsed && typeof parsed === 'object') {
+      return parsed;
+    }
+  } catch (err) {
+    console.warn('AI extraction failed, falling back to local deterministic resume parser:', err);
+  }
+
+  // Guaranteed fallback: parse extracted text directly
+  if (documentText) {
+    return parseResumeLocallyFromText(documentText);
+  }
+
+  throw new Error('Failed to extract resume contents.');
 }
 
 export function isAIConfigured(): boolean {
