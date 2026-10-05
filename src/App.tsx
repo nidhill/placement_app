@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from './types.ts';
-import { api, getToken, setToken } from './lib/api.ts';
+import { api, getToken, setToken, getCachedUser } from './lib/api.ts';
 import { Sidebar, NavItemId } from './components/common/Sidebar.tsx';
 import { Header } from './components/common/Header.tsx';
 import { LoginPage } from './components/auth/LoginPage.tsx';
@@ -25,23 +25,35 @@ import { StudentPortalView } from './components/student/StudentPortalView.tsx';
 
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Restore from sessionStorage synchronously — no spinner for returning users.
+  const cachedUser = getCachedUser();
+  const [currentUser, setCurrentUser] = useState<User | null>(cachedUser);
+  const [isLoggedIn, setIsLoggedIn] = useState(!!cachedUser && !!getToken());
   
   // Rail (collapsed) is the default, like the LMS; the choice sticks per browser.
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => localStorage.getItem('placement_sidebar_collapsed') !== 'false');
   const toggleSidebar = () => setIsSidebarCollapsed(prev => { localStorage.setItem('placement_sidebar_collapsed', String(!prev)); return !prev; });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
-  const [activeNav, setActiveNav] = useState<NavItemId>('dashboard');
+  const [activeNav, setActiveNav] = useState<NavItemId>(() => {
+    if (cachedUser && getToken()) {
+      return cachedUser.role === 'STUDENT' ? 'student_dashboard' : 'dashboard';
+    }
+    return 'dashboard';
+  });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [studentNotificationCount, setStudentNotificationCount] = useState(0);
+  // Only show the full-screen spinner if there's NO cached user (true first load).
+  const [initialLoading, setInitialLoading] = useState(!cachedUser && !!getToken());
 
   // Session comes from the stored JWT (issued by the SHO App or the LMS).
   const loadSession = async () => {
     if (!getToken()) { setInitialLoading(false); return; }
     try {
-      const res = await api.me();
+      // Fire jobs pre-warm in parallel with the session check — free head start.
+      const mePromise = api.me();
+      api.getJobs().catch(() => {}); // pre-warm jobs cache; ignore errors here
+      const res = await mePromise;
       setCurrentUser(res.user);
       setIsLoggedIn(true);
       // Only the first load picks the landing view; a data refresh after an
@@ -49,7 +61,7 @@ export default function App() {
       setActiveNav(prev => (isLoggedIn ? prev : res.user.role === 'STUDENT' ? 'student_dashboard' : 'dashboard'));
     } catch (err: any) {
       // Expired token, or a student not yet approved — back to login.
-      if (err?.status === 401 || err?.status === 403) setToken(null);
+      if (err?.status === 401 || err?.status === 403) { setToken(null); setCurrentUser(null); setIsLoggedIn(false); }
       console.error('Session check failed:', err?.message);
     } finally {
       setInitialLoading(false);
@@ -174,6 +186,7 @@ export default function App() {
         onSignOut={handleSignOut}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        notificationCount={studentNotificationCount}
       />
 
       {/* 2. Main Layout Column: Header + Dashboard Content (Resizes naturally with sidebar width) */}
@@ -189,6 +202,8 @@ export default function App() {
           onToggleSidebar={toggleSidebar}
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
           onSignOut={handleSignOut}
+          notificationCount={studentNotificationCount}
+          onNavigateNotifications={() => setActiveNav(currentUser.role === 'STUDENT' ? 'student_notifications' : 'student_notifications')}
         />
 
         {/* Global Toast if system reset */}
@@ -203,6 +218,7 @@ export default function App() {
               activeTab={activeNav}
               onNavigate={setActiveNav}
               onRefreshData={() => setRefreshTrigger(prev => prev + 1)}
+              onNotificationCountChange={setStudentNotificationCount}
             />
           ) : (
             // Staff views still remount on refresh (the old app's way of

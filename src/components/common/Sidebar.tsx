@@ -78,6 +78,7 @@ interface SidebarProps {
   onSignOut?: () => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
+  notificationCount?: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -90,7 +91,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse,
   onSignOut,
   isOpenMobile = false,
-  onCloseMobile
+  onCloseMobile,
+  notificationCount = 0
 }) => {
   const selected = activeNav || currentTab || 'dashboard';
   const handleNav = onSelectNav || onSelectTab || (() => {});
@@ -225,9 +227,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {navItems.map(({ id, icon, label }) => (
             <React.Fragment key={id}>
               {role === 'MAIN_ADMIN' && id === firstAdminId && <div className={`my-1 h-px bg-border ${wide ? 'mx-3' : 'w-6'}`} />}
-              <button id={`nav-${id}`} onClick={() => handleNavClick(id)} title={wide ? undefined : label} className={item(isItemActive(id))}>
+              <button id={`nav-${id}`} onClick={() => handleNavClick(id)} title={wide ? undefined : label} className={`relative ${item(isItemActive(id))}`}>
                 <Glyph icon={icon} />
                 {wide && <span className="flex-1 truncate text-left">{label}</span>}
+                {id === 'student_notifications' && notificationCount > 0 && (
+                  wide ? (
+                    <span className="ml-auto flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-xs">
+                      {notificationCount}
+                    </span>
+                  ) : (
+                    <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-card" />
+                  )
+                )}
               </button>
             </React.Fragment>
           ))}
@@ -256,6 +267,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {navItems.map(({ id, icon: Icon, label }) => (
             <button key={id} onClick={() => handleNavClick(id)} className={drawerItem(isItemActive(id))}>
               <Icon className="h-[18px] w-[18px] shrink-0" /><span className="flex-1 text-left">{label}</span>
+              {id === 'student_notifications' && notificationCount > 0 && (
+                <span className="ml-auto flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-xs">
+                  {notificationCount}
+                </span>
+              )}
             </button>
           ))}
         </nav>

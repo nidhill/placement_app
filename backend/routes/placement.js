@@ -15,6 +15,7 @@ const { AnalyticsService } = require('../placement/services/analyticsService');
 const { ApifyScraperService } = require('../placement/services/scraperService');
 const { AtsJobApiService } = require('../placement/services/atsJobApiService');
 const { IndiaLocationFilter } = require('../placement/services/indiaLocationFilter');
+const { JobNormalizer } = require('../placement/services/jobNormalizer');
 
 const STAFF = ['MAIN_ADMIN', 'PLACEMENT_OFFICER', 'MANAGEMENT'];   // may view
 const OPS = ['MAIN_ADMIN', 'PLACEMENT_OFFICER'];                    // day-to-day placement work
@@ -291,11 +292,63 @@ router.get('/jobs/:id/candidates', requireRole(...STAFF), wrap(async (req, res) 
 }));
 
 // The full record for one job, description included — what the directory's
+// The full record for one job, description included — what the directory's
 // detail panel opens. Declared after /jobs/:id/candidates so that stays matched.
 router.get('/jobs/:id', wrap(async (req, res) => {
+  let job = await dbStore.getJobById(req.params.id);
+  if (!job) return res.status(404).json({ error: 'Job not found.' });
+
+  // Self-heal legacy hallucinated "0-1 year (Entry Level)" if title/desc shows otherwise
+  const isLegacyFake = /^(0[\s-–]?1\s*year\s*(\/|\()?entry\s*level\)?|0-1\s*years?)$/i.test(job.experienceRequirement || '');
+  const hasFresherKeywords = /\b(fresher|entry[- ]level|fresh graduate|intern|internship|trainee)\b/i.test(`${job.title} ${job.description || ''}`);
+  if (isLegacyFake && !hasFresherKeywords) {
+    const fixed = JobNormalizer.parseExperience(null, job.description || '', job.title);
+    if (fixed.requirement && fixed.requirement !== job.experienceRequirement) {
+      job.experienceRequirement = fixed.requirement;
+      job.minExperienceYears = fixed.minYears;
+      try {
+        await dbStore.updateJob(job.id, { experienceRequirement: fixed.requirement, minExperienceYears: fixed.minYears }, req.actor);
+      } catch (e) { /* ignore */ }
+    }
+  }
+
+  res.json({ job });
+}));
+
+// Live portal reader & analyzer: reads official job portal URL to extract true eligibility & specifications
+router.post('/jobs/:id/analyze-portal', wrap(async (req, res) => {
   const job = await dbStore.getJobById(req.params.id);
   if (!job) return res.status(404).json({ error: 'Job not found.' });
-  res.json({ job });
+
+  const portalUrl = job.applicationUrl || job.externalUrl || job.sourceUrl || req.body?.portalUrl;
+  if (!portalUrl) {
+    return res.status(400).json({ error: 'This job does not have an external portal URL to analyze.' });
+  }
+
+  const analysis = await JobNormalizer.analyzeJobPortal(portalUrl, job.title);
+  if (analysis.analyzed) {
+    const updates = {
+      experienceRequirement: analysis.experienceRequirement,
+      minExperienceYears: analysis.minExperienceYears,
+      portalVerifiedAt: new Date().toISOString(),
+      portalSource: analysis.source || 'Official Job Portal'
+    };
+    if (analysis.description && analysis.description.length > (job.description || '').length) {
+      updates.description = analysis.description;
+    }
+    const updatedJob = await dbStore.updateJob(job.id, updates, req.actor);
+    return res.json({ job: updatedJob, analyzed: true, analysis });
+  }
+
+  // If live portal fetch could not connect (e.g. anti-bot captcha), fall back to deep text analysis of stored job
+  const fallbackExp = JobNormalizer.parseExperience(null, job.description || '', job.title);
+  const updatedJob = await dbStore.updateJob(job.id, {
+    experienceRequirement: fallbackExp.requirement,
+    minExperienceYears: fallbackExp.minYears,
+    portalVerifiedAt: new Date().toISOString()
+  }, req.actor);
+
+  res.json({ job: updatedJob, analyzed: true, fallback: true, analysis });
 }));
 
 // ── 7. Applications & interviews ─────────────────────────────────────────────
@@ -345,7 +398,8 @@ router.patch('/applications/:id/help-status', requireRole(...OPS), wrap(async (r
   res.json({ application: await dbStore.updateHelpStatus(req.params.id, helpStatus, req.actor), message: `Help status updated to ${helpStatus}.` });
 }));
 
-router.patch('/applications/:id/status', requireRole(...OPS), wrap(async (req, res) => {
+router.patch('/applications/:id/status', wrap(async (req, res) => {
+  await ownOrStaff(req, req.params.id);
   const { status } = req.body;
   if (!status) return res.status(400).json({ error: 'Status is required.' });
   res.json({ application: await dbStore.updateApplicationStatus(req.params.id, status, req.actor), message: `Application status updated to ${status}.` });

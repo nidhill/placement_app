@@ -29,6 +29,8 @@ interface HeaderProps {
   onSignOut?: () => void;
   searchQuery?: string;
   onSearchChange?: (val: string) => void;
+  notificationCount?: number;
+  onNavigateNotifications?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -43,7 +45,9 @@ export const Header: React.FC<HeaderProps> = ({
   isResetting = false,
   onSignOut,
   searchQuery = '',
-  onSearchChange
+  onSearchChange,
+  notificationCount = 0,
+  onNavigateNotifications
 }) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -162,8 +166,17 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        <button className="relative flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-muted transition-colors" title="Notifications">
+        <button 
+          onClick={onNavigateNotifications}
+          className="relative flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-muted transition-colors cursor-pointer" 
+          title="Notifications"
+        >
           <Bell className="h-4 w-4 text-muted-foreground" />
+          {notificationCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-xs">
+              {notificationCount}
+            </span>
+          )}
         </button>
 
         <div className="relative" ref={profileMenuRef}>

@@ -83,7 +83,7 @@ class AtsJobAdapter {
     const allSkills = import_jobNormalizer.JobNormalizer.extractSkills(title, description, classification.category);
     const requiredSkills = allSkills.slice(0, 4);
     const preferredSkills = allSkills.length > 4 ? allSkills.slice(4, 7) : ["Git", "Agile"];
-    const { requirement: experienceRequirement, minYears: minExperienceYears } = import_jobNormalizer.JobNormalizer.parseExperience(void 0, description);
+    const { requirement: experienceRequirement, minYears: minExperienceYears } = import_jobNormalizer.JobNormalizer.parseExperience(void 0, description, title);
     let employmentType = "FULL_TIME";
     const typeStr = (rawItem.employmentType || "").toLowerCase();
     if (typeStr.includes("intern")) employmentType = "INTERNSHIP";

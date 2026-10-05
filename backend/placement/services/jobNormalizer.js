@@ -160,28 +160,188 @@ class JobNormalizer {
   }
   /**
    * Normalizes experience requirements from text into standardized strings and minimum years.
+   * Accurately parses ranges, minimums, seniority titles, and avoids false 0-1 year defaults.
    */
-  static parseExperience(rawExp, description) {
+  static parseExperience(rawExp, description, title = "") {
     const text = `${rawExp || ""} ${description || ""}`.toLowerCase();
-    if (/\b(intern|internship|trainee)\b/i.test(text)) {
-      return { requirement: "Internship / Fresh Graduate", minYears: 0 };
-    }
-    if (/\b(0[\s-]?1|0[\s-]?2|fresher|fresh graduate|entry level|junior)\b/i.test(text)) {
-      return { requirement: "0\u20131 year (Entry Level)", minYears: 0 };
-    }
-    if (/\b(1[\s-]?3|1[\s-]?2|2[\s-]?3)\s*(?:years?|yrs?)\b/i.test(text)) {
-      return { requirement: "1\u20133 years", minYears: 1 };
-    }
-    if (/\b(3[\s-]?5|3\+)\s*(?:years?|yrs?)\b/i.test(text)) {
-      return { requirement: "3\u20135 years", minYears: 3 };
-    }
-    if (/\b(5\+|5[\s-]?8|senior)\s*(?:years?|yrs?)\b/i.test(text)) {
-      return { requirement: "5+ years (Senior)", minYears: 5 };
-    }
-    if (rawExp && typeof rawExp === "string" && rawExp.trim()) {
+    const titleLower = String(title || "").toLowerCase();
+
+    // 1. Explicit rawExp string if provided and not a generic fallback
+    if (rawExp && typeof rawExp === "string" && rawExp.trim() && !/^(0[-–]?1|entry|fresher|not specified)$/i.test(rawExp.trim())) {
+      const match = rawExp.match(/(\d+)\s*(?:-|–|to)\s*(\d+)/i);
+      if (match) {
+        return { requirement: `${match[1]}–${match[2]} years`, minYears: parseInt(match[1], 10) };
+      }
+      const plusMatch = rawExp.match(/(\d+)\s*\+/i);
+      if (plusMatch) {
+        return { requirement: `${plusMatch[1]}+ years`, minYears: parseInt(plusMatch[1], 10) };
+      }
       return { requirement: rawExp.trim(), minYears: 0 };
     }
-    return { requirement: "0\u20131 year / Entry Level", minYears: 0 };
+
+    // 2. High-precision numeric range checks in text (e.g. "2-4 years", "2 to 3 years", "3-5 years")
+    const rangeMatch = text.match(/\b(\d+)\s*(?:-|–|to)\s*(\d+)\s*(?:years?|yrs?)(?:\s+(?:of\s+)?(?:relevant\s+|work\s+|professional\s+|industry\s+|software\s+)?experience)?\b/i);
+    if (rangeMatch) {
+      const min = parseInt(rangeMatch[1], 10);
+      const max = parseInt(rangeMatch[2], 10);
+      if (min < 25 && max < 30 && min <= max) {
+        if (min === 0 && max <= 1) {
+          return { requirement: "0–1 year (Entry Level)", minYears: 0 };
+        }
+        return { requirement: `${min}–${max} years`, minYears: min };
+      }
+    }
+
+    // 3. Minimum / plus years (e.g. "3+ years", "minimum 2 years of experience", "at least 4 years")
+    const plusMatch = text.match(/\b(?:minimum|min|at\s+least)\s+(\d+)\+?\s*(?:years?|yrs?)\b/i) ||
+                      text.match(/\b(\d+)\+\s*(?:years?|yrs?)(?:\s+(?:of\s+)?(?:relevant\s+|work\s+|professional\s+|industry\s+|software\s+)?experience)?\b/i) ||
+                      text.match(/\b(\d+)\s*(?:years?|yrs?)\s+of\s+(?:relevant\s+|work\s+|professional\s+|industry\s+|software\s+)?experience\b/i);
+    if (plusMatch) {
+      const yrs = parseInt(plusMatch[1], 10);
+      if (yrs > 0 && yrs < 25) {
+        return { requirement: `${yrs}+ years`, minYears: yrs };
+      }
+    }
+
+    // 4. "Experience: X years" or "Experience required: X"
+    const expLabelMatch = text.match(/\bexperience(?:\s+required)?\s*[:\-–]\s*(\d+)(?:\s*(?:-|–|to)\s*(\d+))?\s*(?:years?|yrs?)?\b/i);
+    if (expLabelMatch) {
+      const min = parseInt(expLabelMatch[1], 10);
+      const max = expLabelMatch[2] ? parseInt(expLabelMatch[2], 10) : null;
+      if (max && min <= max && max < 25) {
+        return { requirement: `${min}–${max} years`, minYears: min };
+      } else if (min > 0 && min < 25) {
+        return { requirement: `${min}+ years`, minYears: min };
+      }
+    }
+
+    // 5. Seniority in job title or high-level descriptions
+    if (/\b(principal|staff|lead|architect|director|head|vp)\b/i.test(titleLower)) {
+      return { requirement: "5–8+ years (Senior / Lead)", minYears: 5 };
+    }
+    if (/\b(senior|sr\.?)\b/i.test(titleLower)) {
+      return { requirement: "3–5+ years (Senior)", minYears: 3 };
+    }
+    if (/\b(mid[- ]?level|intermediate)\b/i.test(titleLower)) {
+      return { requirement: "2–4 years (Mid-Level)", minYears: 2 };
+    }
+    if (/\b(junior|jr\.?|associate)\b/i.test(titleLower)) {
+      return { requirement: "1–2 years (Junior / Associate)", minYears: 1 };
+    }
+
+    // 6. Explicit Entry Level, Freshers, Interns (ONLY with explicit terms, NOT random "01" numbers!)
+    if (/\b(intern|internship|trainee)\b/i.test(titleLower) || /\b(intern|internship|trainee)\b/i.test(text)) {
+      return { requirement: "Internship / Fresh Graduate", minYears: 0 };
+    }
+    if (/\b(fresher|freshers|fresh graduate|entry[- ]level|campus hire)\b/i.test(titleLower) || /\b(fresher|freshers|fresh graduate|entry[- ]level|campus hire)\b/i.test(text)) {
+      return { requirement: "0–1 year (Entry Level)", minYears: 0 };
+    }
+
+    // 7. General experience mentions in description: "1-2 years", "2-3 years", "3-5 years", "5+ years"
+    if (/\b(5\+|5[\s-]?8)\s*(?:years?|yrs?)\b/i.test(text)) {
+      return { requirement: "5+ years (Senior)", minYears: 5 };
+    }
+    if (/\b(3[\s-]?5|3\+)\s*(?:years?|yrs?)\b/i.test(text)) {
+      return { requirement: "3–5 years", minYears: 3 };
+    }
+    if (/\b(2[\s-]?4|2[\s-]?3|2\+)\s*(?:years?|yrs?)\b/i.test(text)) {
+      return { requirement: "2–4 years", minYears: 2 };
+    }
+    if (/\b(1[\s-]?3|1[\s-]?2|1\+)\s*(?:years?|yrs?)\b/i.test(text)) {
+      return { requirement: "1–3 years", minYears: 1 };
+    }
+
+    // 8. If nothing was matched: DO NOT HALLUCINATE "0-1 year (Entry Level)"!
+    return { requirement: "Check Job Portal (Not Specified)", minYears: null };
+  }
+
+  /**
+   * Fetches and reads the live job portal page to extract genuine requirements & specifications.
+   */
+  static async analyzeJobPortal(portalUrl, jobTitle = "") {
+    if (!portalUrl || !/^https?:\/\//i.test(portalUrl)) {
+      return { analyzed: false, reason: "Invalid portal URL" };
+    }
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 7000);
+
+      // 1. Check for known ATS API patterns first (Greenhouse, Lever, Ashby)
+      const ghMatch = portalUrl.match(/boards\.greenhouse\.io\/([^/]+)\/jobs\/(\d+)/i);
+      if (ghMatch) {
+        const [, board, jobId] = ghMatch;
+        const apiUrl = `https://boards-api.greenhouse.io/v1/boards/${board}/jobs/${jobId}`;
+        const res = await fetch(apiUrl, { signal: controller.signal, headers: { Accept: "application/json" } });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const data = await res.json();
+          const cleanDesc = (data.content || "").replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim();
+          const exp = this.parseExperience(null, cleanDesc, data.title || jobTitle);
+          return {
+            analyzed: true,
+            source: "Greenhouse Official API",
+            experienceRequirement: exp.requirement,
+            minExperienceYears: exp.minYears,
+            description: cleanDesc.slice(0, 4000)
+          };
+        }
+      }
+
+      const leverMatch = portalUrl.match(/jobs\.lever\.co\/([^/]+)\/([a-f0-9-]+)/i);
+      if (leverMatch) {
+        const [, company, jobId] = leverMatch;
+        const apiUrl = `https://api.lever.co/v0/postings/${company}/${jobId}`;
+        const res = await fetch(apiUrl, { signal: controller.signal, headers: { Accept: "application/json" } });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const data = await res.json();
+          const desc = `${data.descriptionPlain || ""} ${(data.lists || []).map(l => `${l.text}: ${(l.content || []).join(", ")}`).join("\n")}`;
+          const exp = this.parseExperience(null, desc, data.text || jobTitle);
+          return {
+            analyzed: true,
+            source: "Lever Official API",
+            experienceRequirement: exp.requirement,
+            minExperienceYears: exp.minYears,
+            description: desc.slice(0, 4000)
+          };
+        }
+      }
+
+      // 2. Fetch page HTML directly
+      const pageRes = await fetch(portalUrl, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9"
+        }
+      });
+      clearTimeout(timeout);
+
+      if (!pageRes.ok) {
+        return { analyzed: false, reason: `Portal returned HTTP ${pageRes.status}` };
+      }
+
+      const html = await pageRes.text();
+      // Strip script, style, SVG, comments
+      const textOnly = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+
+      const exp = this.parseExperience(null, textOnly.slice(0, 10000), jobTitle);
+      return {
+        analyzed: true,
+        source: "Live Portal Reader",
+        experienceRequirement: exp.requirement,
+        minExperienceYears: exp.minYears,
+        snippet: textOnly.slice(0, 1500)
+      };
+    } catch (err) {
+      return { analyzed: false, error: err.message };
+    }
   }
   /**
    * Ingests a raw job item from Apify or external feed, applies the TechJobClassifier,
@@ -241,8 +401,8 @@ class JobNormalizer {
     const allSkills = this.extractSkills(title, description, classification.category);
     const requiredSkills = allSkills.slice(0, 4);
     const isTechCategory = !CATEGORY_DEFAULT_SKILLS[classification.category];
-    const preferredSkills = allSkills.length > 4 ? allSkills.slice(4, 7) : isTechCategory ? ["Git", "Agile"] : [];
-    const { requirement: experienceRequirement, minYears: minExperienceYears } = this.parseExperience(rawItem.experienceLevel, description);
+    const rawExp = rawItem.experience || rawItem.experienceLevel || rawItem.experienceText || void 0;
+    const { requirement: experienceRequirement, minYears: minExperienceYears } = this.parseExperience(rawExp, description, title);
     let employmentType = "FULL_TIME";
     const contract = (rawItem.contractType || "").toLowerCase();
     if (contract.includes("intern")) employmentType = "INTERNSHIP";

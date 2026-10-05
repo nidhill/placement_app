@@ -133,19 +133,21 @@ class JobMatchingService {
     const jobMinYears = job.minExperienceYears ?? 0;
     let expRatio = 1;
     let expVerdict = "COMPATIBLE";
-    let experienceExplanation = "";
     const expReqText = (job.experienceRequirement || "").toLowerCase();
-    if (!job.experienceRequirement) {
+    const isUnspecified = !job.experienceRequirement || expReqText.includes("not specified") || expReqText.includes("check job portal");
+    const isGenuineFresher = (jobMinYears === 0 || jobMinYears == null) && (expReqText.includes("fresh") || expReqText.includes("entry") || expReqText.includes("intern"));
+
+    if (isUnspecified) {
       expVerdict = "UNKNOWN";
-      expRatio = 0.7;
-      experienceExplanation = "Experience requirement not specified";
-    } else if (jobMinYears <= studentYears || expReqText.includes("fresh") || expReqText.includes("0-1") || expReqText.includes("0\u20131") || expReqText.includes("entry")) {
+      expRatio = 0.75;
+      experienceExplanation = "Experience to be verified on job portal";
+    } else if (isGenuineFresher || (jobMinYears != null && jobMinYears <= studentYears)) {
       expVerdict = "COMPATIBLE";
       expRatio = 1;
-      experienceExplanation = "\u2713 Suitable for fresher / 0\u20131 year";
-    } else if (jobMinYears <= studentYears + 1) {
+      experienceExplanation = jobMinYears > 0 ? `\u2713 Requires ${job.experienceRequirement}` : "\u2713 Suitable for fresher / entry-level";
+    } else if (jobMinYears != null && jobMinYears <= studentYears + 1) {
       expVerdict = "PARTIAL";
-      expRatio = 0.65;
+      expRatio = 0.6;
       experienceExplanation = `Requires ${job.experienceRequirement}`;
     } else {
       expVerdict = "LOW";

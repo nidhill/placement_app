@@ -171,6 +171,8 @@ export interface JobListing {
   sourceUrl?: string;
   postedDate?: string;
   scrapedDate?: string;
+  portalVerifiedAt?: string;
+  portalSource?: string;
 }
 
 export interface ApifyFetchResult {

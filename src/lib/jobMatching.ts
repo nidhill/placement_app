@@ -450,10 +450,12 @@ export function matchJobToResume(job: JobListing, resumeData: ResumeData): JobMa
   });
   const totalYearsExp = totalMonthsExp / 12;
 
-  let jobMinYears = job.minExperienceYears || 0;
-  if (!jobMinYears) {
-    const jobExpStr = getDisplayExperience(job).toLowerCase();
-    if (jobExpStr.includes('fresh') || jobExpStr.includes('entry') || /0[- ]*1/.test(jobExpStr)) {
+  let jobMinYears: number | null = job.minExperienceYears ?? null;
+  const jobExpStr = getDisplayExperience(job).toLowerCase();
+  const isUnspecified = jobExpStr.includes('not specified') || jobExpStr.includes('check job portal');
+
+  if (jobMinYears === null) {
+    if (jobExpStr.includes('fresh') || jobExpStr.includes('entry') || jobExpStr.includes('intern')) {
       jobMinYears = 0;
     } else {
       const numMatch = jobExpStr.match(/(\d+)/);
@@ -463,15 +465,21 @@ export function matchJobToResume(job: JobListing, resumeData: ResumeData): JobMa
     }
   }
 
-  if (totalYearsExp >= jobMinYears) {
-    rawExperienceScore = maxExperienceScore;
-    experienceMatch = 'COMPATIBLE';
-  } else if (totalYearsExp >= jobMinYears - 1) {
-    rawExperienceScore = maxExperienceScore / 2;
-    experienceMatch = 'PARTIAL';
+  if (isUnspecified && jobMinYears === null) {
+    rawExperienceScore = Math.round(maxExperienceScore * 0.75);
+    experienceMatch = 'UNKNOWN';
   } else {
-    rawExperienceScore = 0;
-    experienceMatch = 'LOW';
+    const requiredYears = jobMinYears ?? 0;
+    if (totalYearsExp >= requiredYears) {
+      rawExperienceScore = maxExperienceScore;
+      experienceMatch = 'COMPATIBLE';
+    } else if (totalYearsExp >= requiredYears - 1) {
+      rawExperienceScore = Math.round(maxExperienceScore * 0.6);
+      experienceMatch = 'PARTIAL';
+    } else {
+      rawExperienceScore = 0;
+      experienceMatch = 'LOW';
+    }
   }
 
   const experienceScore = domainCheck.isCompatible ? rawExperienceScore : 0;
