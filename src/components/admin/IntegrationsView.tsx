@@ -16,7 +16,7 @@ import {
   Clock
 } from 'lucide-react';
 
-export const IntegrationsView: React.FC = () => {
+export const IntegrationsView: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const [lmsConfig, setLmsConfig] = useState<LmsSyncConfig | null>(null);
   const [scraperConfig, setScraperConfig] = useState<ApifyScraperConfig | null>(null);
   const [apifyStatus, setApifyStatus] = useState<ApifyConnectionStatus | null>(null);
@@ -365,6 +365,11 @@ export const IntegrationsView: React.FC = () => {
                 <span className="text-slate-500">Last Fetch:</span>
                 <span className="font-medium text-slate-800">{lastFetchDisplay}</span>
               </div>
+              {scraperConfig.lastError && scraperConfig.lastErrorAt && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700">
+                  <span className="font-semibold">Last run failed {new Date(scraperConfig.lastErrorAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}:</span> {scraperConfig.lastError}
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Jobs Fetched:</span>
                 <span className="font-bold text-foreground">{scraperConfig.leadsProcessedTotal} Opportunities</span>
@@ -530,7 +535,7 @@ export const IntegrationsView: React.FC = () => {
 
       </div>
 
-      <JobBoardsPanel canRun />
+      <JobBoardsPanel canRun canEdit={isAdmin} />
 
     </div>
   );

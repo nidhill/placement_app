@@ -90,24 +90,7 @@ class AtsJobAdapter {
     else if (typeStr.includes("contract")) employmentType = "CONTRACT";
     else if (typeStr.includes("part")) employmentType = "PART_TIME";
     const salaryRange = rawItem.salaryText && rawItem.salaryText.trim() ? rawItem.salaryText.trim() : "Competitive / Market Standard";
-    const eligibleSchools = ["School of Tech"];
-    const eligiblePrograms = [];
-    if (classification.category === "Full Stack Development") {
-      eligiblePrograms.push("Full Stack Web Development");
-    } else if (classification.category === "Frontend Development") {
-      eligiblePrograms.push("Full Stack Web Development");
-    } else if (classification.category === "Backend Development") {
-      eligiblePrograms.push("Python Development", "Full Stack Web Development");
-    } else if (classification.category === "Data Analytics") {
-      eligiblePrograms.push("Data Analytics");
-    } else if (classification.category === "AI / Machine Learning" || classification.category === "Data Engineering") {
-      eligiblePrograms.push("Data Analytics", "Python Development");
-    } else if (classification.category === "UI/UX / Product Design") {
-      eligibleSchools.push("School of Design");
-      eligiblePrograms.push("UI/UX Product Design");
-    } else {
-      eligiblePrograms.push("Full Stack Web Development", "Python Development");
-    }
+    const { schools: eligibleSchools, programs: eligiblePrograms } = require("./jobNormalizer").schoolsAndPrograms(classification.category);
     const externalUrl = rawItem.applyUrl || `https://www.google.com/search?q=${encodeURIComponent(company + " " + title + " careers")}`;
     const applicationUrl = externalUrl;
     const externalJobId = String(rawItem.id);

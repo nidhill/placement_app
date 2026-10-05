@@ -85,6 +85,10 @@ router.patch('/admin/users/:id/role', requireRole('MAIN_ADMIN'), wrap(async (req
   const user = await dbStore.changeUserRole(req.params.id, req.body?.role, req.actor);
   res.json({ user, message: 'Role updated.' });
 }));
+router.post('/admin/users/:id/reset-password', requireRole('MAIN_ADMIN'), wrap(async (req, res) => {
+  const { user, tempPassword } = await dbStore.resetUserPassword(req.params.id, req.actor);
+  res.json({ user, tempPassword, message: `New password for ${user.fullName}. Give it to them directly — it is shown only once.` });
+}));
 router.delete('/admin/users/:id', requireRole('MAIN_ADMIN'), wrap(async (req, res) => {
   const user = await dbStore.deleteUser(req.params.id, req.actor);
   res.json({ user, message: 'User deleted.' });
@@ -104,8 +108,19 @@ router.get('/admin/integrations/lms', requireRole(...STAFF), wrap(async (req, re
 router.patch('/admin/integrations/lms', requireRole('MAIN_ADMIN'), wrap(async (req, res) => res.json(await dbStore.updateLmsConfig(req.body, req.actor))));
 router.post('/admin/integrations/lms/sync', requireRole(...OPS), wrap(async (req, res) => res.json(await syncEligibleStudents(req.actor))));
 
-router.get('/admin/integrations/apify', requireRole(...STAFF), wrap(async (req, res) => res.json(await dbStore.getApifyConfig())));
-router.patch('/admin/integrations/apify', requireRole('MAIN_ADMIN'), wrap(async (req, res) => res.json(await dbStore.updateApifyConfig(req.body, req.actor))));
+router.get('/admin/integrations/apify', requireRole(...STAFF), wrap(async (req, res) => res.json(dbStore.publicApifyConfig(await dbStore.getApifyConfig()))));
+router.patch('/admin/integrations/apify', requireRole('MAIN_ADMIN'), wrap(async (req, res) => {
+  try { res.json(await dbStore.updateApifyConfigFromAdmin(req.body, req.actor)); }
+  catch (err) { res.status(400).json({ error: err.message }); }
+}));
+// Which Apify account the scraper spends from, how much it has used this
+// billing cycle, and when the next scheduled run is.
+router.get('/admin/integrations/apify/usage', requireRole(...STAFF), wrap(async (req, res) => {
+  const usage = await ApifyScraperService.getUsage();
+  const cfg = await dbStore.getApifyConfig();
+  const { nextApifyRun } = require('../placement/scheduler');
+  res.json({ ...usage, nextRun: cfg.isEnabled === false ? null : nextApifyRun(cfg) });
+}));
 router.get('/admin/integrations/apify/status', requireRole(...STAFF), wrap(async (req, res) => res.json(await ApifyScraperService.testConnection())));
 router.post('/admin/integrations/apify/test', requireRole(...OPS), wrap(async (req, res) => {
   const status = await ApifyScraperService.testConnection();
@@ -142,7 +157,9 @@ router.post('/admin/integrations/ats/fetch', requireRole(...OPS), atsFetch);
 // The UI shows when the automated run happens instead of manual buttons.
 router.get('/admin/integrations/schedule', requireRole(...STAFF), (req, res) => {
   const { nextRun } = require('../placement/scheduler');
-  res.json({ status: 'ACTIVE', schedule: 'Daily at 2:00 AM IST', nextScheduledRun: nextRun().toISOString(), services: ['SHO student sync', 'Apify LinkedIn Job Scraper', 'Public ATS APIs (Greenhouse, Lever, Ashby)'] });
+  // Apify is not in this nightly batch any more — it runs on the admin's own
+  // schedule (GET /admin/integrations/apify/usage has its next run).
+  res.json({ status: 'ACTIVE', schedule: 'Daily at 2:00 AM IST', nextScheduledRun: nextRun().toISOString(), services: ['SHO student sync', 'Public ATS APIs (Greenhouse, Lever, Ashby)'] });
 });
 router.post('/admin/integrations/ats/sync', requireRole(...OPS), atsFetch);
 
@@ -151,7 +168,9 @@ router.post('/admin/integrations/ats/sync', requireRole(...OPS), atsFetch);
 // the tool keeps an admin-only toggle and the emergency override.)
 router.get('/mentor/students', requireRole(...STAFF), wrap(async (req, res) => {
   const mentorId = req.query.mentorId;
-  res.json({ students: mentorId ? await dbStore.getStudentsByMentor(String(mentorId)) : await dbStore.getAllStudents() });
+  // Lite: the roster does not need each student's CV, which is a base64 PDF
+  // held twice in the record. GET /students/:id returns it for the one opened.
+  res.json({ students: mentorId ? await dbStore.getStudentsByMentor(String(mentorId)) : await dbStore.getAllStudents({ lite: true }) });
 }));
 const toggle = wrap(async (req, res) => {
   const { isEligible, evaluationNotes } = req.body;
@@ -204,7 +223,10 @@ router.get('/students/:id/recommendations', wrap(async (req, res) => {
 // ── 6. Jobs ─────────────────────────────────────────────────────────────────
 router.get('/jobs', wrap(async (req, res) => {
   const { sourceChannel, school, search, category, designation, includeAll } = req.query;
-  let jobs = await dbStore.getAllJobs();
+  // Lite: no descriptions. The directory lists title, company, location, salary
+  // and skills; the description is 8.7 KB a row and only the detail panel reads
+  // it, which now fetches its one job from GET /jobs/:id below.
+  let jobs = await dbStore.getAllJobs({ lite: true });
   jobs = jobs.filter(j => j.countryCode === 'IN' || IndiaLocationFilter.evaluateLocation({ location: j.location, countryCode: j.countryCode }).isIndia);
   if (includeAll !== 'true') {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -236,9 +258,7 @@ router.post('/jobs', requireRole(...OPS), wrap(async (req, res) => {
   if (!locCheck.isIndia) return res.status(400).json({ error: `Job creation rejected: Location "${b.location || 'Empty'}" is outside India. The HACA Placement Platform strictly requires all jobs to be located in India.` });
   const requiredSkills = Array.isArray(b.requiredSkills) ? b.requiredSkills : [b.requiredSkills];
   const applicationUrl = String(b.applicationUrl || b.externalUrl || '').trim();
-  if (applicationUrl && !/^https?:\/\/\S+$/i.test(applicationUrl)) {
-    return res.status(400).json({ error: 'If provided, the application link must be a valid URL starting with http:// or https://.' });
-  }
+  if (!/^https?:\/\/\S+$/i.test(applicationUrl)) return res.status(400).json({ error: 'An application link (https://…) is required so students know where to apply.' });
   const classification = TechJobClassifier.classify({ title: b.title, description: b.description, skills: requiredSkills });
   const job = await dbStore.createJob({
     title: b.title, company: b.company, location: locCheck.normalizedLocation, countryCode: 'IN',
@@ -248,7 +268,7 @@ router.post('/jobs', requireRole(...OPS), wrap(async (req, res) => {
     educationRequirements: b.educationRequirements || ['HACA Certificate'], eligibleSchools: b.eligibleSchools || [], eligiblePrograms: b.eligiblePrograms || [],
     category: b.category || (classification.isTechJob ? classification.category : 'Software Development'),
     normalizedDesignation: b.normalizedDesignation || DesignationNormalizer.normalize(b.title),
-    sourceChannel: b.sourceChannel, referralSourceName: b.referralSourceName, externalUrl: applicationUrl || undefined, applicationUrl: applicationUrl || undefined,
+    sourceChannel: b.sourceChannel, referralSourceName: b.referralSourceName, externalUrl: applicationUrl, applicationUrl,
     deadline: b.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), status: 'ACTIVE', discoveredAt: new Date().toISOString(),
   }, req.actor);
   res.status(201).json({ job, message: 'Job created and tagged successfully.' });
@@ -267,7 +287,15 @@ router.delete('/jobs/:id', requireRole(...OPS), wrap(async (req, res) => {
 router.get('/jobs/:id/candidates', requireRole(...STAFF), wrap(async (req, res) => {
   const job = await dbStore.getJobById(req.params.id);
   if (!job) return res.status(404).json({ error: 'Job not found.' });
-  res.json({ job, candidates: RuleBasedMatchingEngine.rankCandidatesForJob(job, await dbStore.getAllStudents()) });
+  res.json({ job, candidates: RuleBasedMatchingEngine.rankCandidatesForJob(job, await dbStore.getAllStudents({ lite: true })) });
+}));
+
+// The full record for one job, description included — what the directory's
+// detail panel opens. Declared after /jobs/:id/candidates so that stays matched.
+router.get('/jobs/:id', wrap(async (req, res) => {
+  const job = await dbStore.getJobById(req.params.id);
+  if (!job) return res.status(404).json({ error: 'Job not found.' });
+  res.json({ job });
 }));
 
 // ── 7. Applications & interviews ─────────────────────────────────────────────
@@ -317,8 +345,7 @@ router.patch('/applications/:id/help-status', requireRole(...OPS), wrap(async (r
   res.json({ application: await dbStore.updateHelpStatus(req.params.id, helpStatus, req.actor), message: `Help status updated to ${helpStatus}.` });
 }));
 
-router.patch('/applications/:id/status', wrap(async (req, res) => {
-  await ownOrStaff(req, req.params.id);
+router.patch('/applications/:id/status', requireRole(...OPS), wrap(async (req, res) => {
   const { status } = req.body;
   if (!status) return res.status(400).json({ error: 'Status is required.' });
   res.json({ application: await dbStore.updateApplicationStatus(req.params.id, status, req.actor), message: `Application status updated to ${status}.` });
@@ -345,6 +372,19 @@ router.post('/feedback/rejection', requireRole(...OPS), wrap(async (req, res) =>
 }));
 
 // ── 9. Analytics ─────────────────────────────────────────────────────────────
+// Resume Agent — the model call runs here so the AI key stays on the server.
+// Any signed-in placement user (staff or an eligible student) may use it.
+router.post('/ai/complete', wrap(async (req, res) => {
+  const resumeAi = require('../placement/services/resumeAi');
+  try {
+    const text = await resumeAi.complete(req.body?.prompt);
+    res.json({ text });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}));
+router.get('/ai/status', wrap(async (req, res) => res.json({ configured: require('../placement/services/resumeAi').isConfigured() })));
+
 router.get('/analytics/overview', requireRole(...STAFF), wrap(async (req, res) => res.json(await AnalyticsService.getManagementKPIs())));
 
 module.exports = router;

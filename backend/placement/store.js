@@ -45,6 +45,11 @@ const DEFAULT_APIFY = {
   hoursOld: 24,
   scheduleCron: '0 4 * * *',
   isEnabled: true,
+  // Scheduled scraping, set by the admin on Job boards to scrape.
+  everyDays: 1,          // run once every N days
+  runHourIst: 2,         // at this hour, India time
+  monthlyBudgetUsd: 0,   // stop when the Apify account has spent this much this cycle; 0 = no cap
+  apiToken: '',          // an Apify token set from the panel; empty = the server's APIFY_API_TOKEN
   lastRunTimestamp: null,
   leadsProcessedTotal: 0,
 };
@@ -144,6 +149,23 @@ class PlacementStore {
     return u;
   }
 
+  // A placement admin can hand someone a new password without going through
+  // the SHO App. The password is returned once, to be passed on in person —
+  // it is never stored in plain text or emailed from here.
+  async resetUserPassword(id, actor) {
+    const u = await this._placementOwnedUser(id, actor, 'reset the password of');
+    const tempPassword = `Haca@${Math.random().toString(36).slice(-6)}${Math.floor(10 + Math.random() * 89)}`;
+    u.password = tempPassword;           // hashed by the model's pre-save hook
+    u.activeSessions = [];               // any open session is signed out
+    await u.save();
+    await this.logAudit({
+      actorId: actor.id, actorName: actor.name, actorRole: actor.role,
+      action: 'USER_PASSWORD_RESET', entityType: 'USER', entityId: String(u._id),
+      details: `Reset the password for "${u.name}" (${u.email}).`,
+    });
+    return { user: toPlacementUser(u), tempPassword };
+  }
+
   async revokeUser(id, actor) {
     const u = await this._placementOwnedUser(id, actor, 'revoke');
     u.isActive = false;
@@ -213,8 +235,16 @@ class PlacementStore {
   // ==========================================
   // 2. STUDENTS & ELIGIBILITY GATE
   // ==========================================
-  async getAllStudents() {
-    return (await PlacementStudent.find().lean()).map(strip);
+  // `lite` leaves out the two resume blobs. A student's CV is stored in the
+  // document itself as a base64 data URI, in resumeUrl and again in
+  // resumeDataUrl — the same file, twice — so one student record is around
+  // 224 KB and just two of them took 4.9 seconds to read. resumeFileName stays,
+  // which is all a list needs to show that a CV is on file; getStudentById()
+  // returns the blobs for the one student being opened.
+  async getAllStudents({ lite = false } = {}) {
+    const query = PlacementStudent.find();
+    if (lite) query.select('-resumeUrl -resumeDataUrl');
+    return (await query.lean()).map(strip);
   }
   async getStudentById(id) {
     const s = await PlacementStudent.findOne({ id }).lean();
@@ -327,8 +357,16 @@ class PlacementStore {
     const seen = new Date(job.postedDate || job.discoveredAt || job.createdAt || 0);
     return seen >= PlacementStore.jobAgeCutoff();
   }
-  async getAllJobs() {
-    const jobs = (await PlacementJob.find().lean()).map(strip);
+  // `lite` leaves out the job description, which nothing in a list view reads.
+  // It is 8.7 KB of the ~10 KB each job weighs, so all 182 of them came to
+  // 869 KB and the query took 9.5 seconds; without it the same query takes 1.5.
+  // Job matching scores on title, skills and experience, never the description,
+  // so a lite list is a complete list for everything except the detail panel —
+  // which loads one job through getJobById().
+  async getAllJobs({ lite = false } = {}) {
+    const query = PlacementJob.find();
+    if (lite) query.select('-description');
+    const jobs = (await query.lean()).map(strip);
     return jobs
       .filter(job => PlacementStore.isFresh(job))
       .filter(job => job.countryCode === 'IN' || IndiaLocationFilter.evaluateLocation({ location: job.location, countryCode: job.countryCode }).isIndia)
@@ -597,10 +635,51 @@ class PlacementStore {
     return doc;
   }
   async getApifyConfig() { const d = await this.settings(); return { ...DEFAULT_APIFY, ...(d.apify || {}) }; }
+  // What the panel may see: never the token itself, only whether one is set.
+  publicApifyConfig(cfg) {
+    const { apiToken, apiKey, ...rest } = cfg;
+    return { ...rest, apiTokenSet: !!apiToken, apiTokenLast4: apiToken ? String(apiToken).slice(-4) : null };
+  }
+  // The admin's Save. Only the fields the panel owns, each checked, so a
+  // request cannot write run bookkeeping or anything else into the config.
+  async updateApifyConfigFromAdmin(body, actor) {
+    const b = body || {};
+    const u = {};
+    const BOARDS = ['linkedin', 'indeed', 'glassdoor', 'naukri'];
+    const list = (v, max) => (Array.isArray(v) ? v : []).map(x => String(x).trim()).filter(Boolean).slice(0, max);
+    const int = (v, lo, hi) => { const n = Math.round(Number(v)); if (!Number.isFinite(n) || n < lo || n > hi) throw new Error(`Must be between ${lo} and ${hi}`); return n; };
+    if (b.boards !== undefined) u.boards = list(b.boards, 4).filter(x => BOARDS.includes(x));
+    if (b.searchTerms !== undefined) u.searchTerms = list(b.searchTerms, 40);
+    if (b.locations !== undefined) u.locations = list(b.locations, 10);
+    if (b.maxPerSource !== undefined) u.maxPerSource = int(b.maxPerSource, 1, 100);
+    if (b.hoursOld !== undefined) u.hoursOld = int(b.hoursOld, 1, 720);
+    if (b.isEnabled !== undefined) u.isEnabled = !!b.isEnabled;
+    if (b.everyDays !== undefined) u.everyDays = int(b.everyDays, 1, 30);
+    if (b.runHourIst !== undefined) u.runHourIst = int(b.runHourIst, 0, 23);
+    if (b.monthlyBudgetUsd !== undefined) {
+      const n = Number(b.monthlyBudgetUsd);
+      if (!Number.isFinite(n) || n < 0 || n > 1000) throw new Error('Budget must be between 0 and 1000');
+      u.monthlyBudgetUsd = Math.round(n * 100) / 100;
+    }
+    let tokenNote = '';
+    if (b.clearApiToken) { u.apiToken = ''; tokenNote = ' Apify token cleared — back to the server token.'; }
+    else if (typeof b.apiToken === 'string' && b.apiToken.trim()) { u.apiToken = b.apiToken.trim(); tokenNote = ' Apify token replaced.'; }
+    const d = await this.settings(); d.apify = { ...DEFAULT_APIFY, ...(d.apify || {}), ...u }; d.markModified('apify'); await d.save();
+    await this.logAudit({ actorId: actor.id, actorName: actor.name, actorRole: actor.role, action: 'APIFY_CONFIG_UPDATED', entityType: 'INTEGRATION', entityId: 'APIFY', details: 'Apify scraper settings updated.' + tokenNote });
+    return this.publicApifyConfig(d.apify);
+  }
   async updateApifyConfig(updates, actor) {
     const d = await this.settings(); d.apify = { ...DEFAULT_APIFY, ...(d.apify || {}), ...updates }; d.markModified('apify'); await d.save();
     await this.logAudit({ actorId: actor.id, actorName: actor.name, actorRole: actor.role, action: 'APIFY_CONFIG_UPDATED', entityType: 'INTEGRATION', entityId: 'APIFY', details: 'Apify scraper settings updated.' });
     return d.apify;
+  }
+  // A scheduled Apify run that failed (quota spent, token rejected…). Saved
+  // without an audit entry — it is the scheduler talking, not an admin — and
+  // shown on the Integrations panel so a stopped scraper is not silent.
+  async recordApifyFailure(message) {
+    const d = await this.settings();
+    d.apify = { ...DEFAULT_APIFY, ...(d.apify || {}), lastError: String(message || 'Unknown error').slice(0, 500), lastErrorAt: new Date().toISOString() };
+    d.markModified('apify'); await d.save();
   }
   async getLmsConfig() { const d = await this.settings(); return { ...DEFAULT_LMS, ...(d.lms || {}) }; }
   async updateLmsConfig(updates, actor) {

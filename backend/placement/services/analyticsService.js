@@ -38,9 +38,9 @@ class AnalyticsService {
     }
   }
   static async getManagementKPIs() {
-    const students = await import_store.dbStore.getAllStudents();
+    const students = await import_store.dbStore.getAllStudents({ lite: true });
     const applications = await import_store.dbStore.getAllApplications();
-    const jobs = await import_store.dbStore.getAllJobs();
+    const jobs = await import_store.dbStore.getAllJobs({ lite: true });
     const eligibleStudents = students.filter(
       (s) => s.eligibilityStatus === "ELIGIBLE" || s.eligibilityStatus === "ADMIN_OVERRIDE"
     );

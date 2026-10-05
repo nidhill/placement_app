@@ -109,7 +109,7 @@ export interface StudentProfile {
   fullName: string;
   email: string;
   phone: string;
-  school: string; // e.g. "School of Tech", "School of Design", "School of Marketing"
+  school: string; // the SHO App school name: "Tech School", "Design School", "Marketing School"
   program: string; // e.g. "Full Stack Web Development", "UI/UX Product Design"
   designation?: string; // Student primary professional role / designation e.g. "Full Stack Developer", "Data Analyst"
   yearsOfExperience?: number; // e.g. 0.5 (6 months), 1, 2
@@ -377,7 +377,31 @@ export interface ApifyScraperConfig {
   scheduleCron: string;
   isEnabled: boolean;
   lastRunTimestamp?: string;
+  // Set when a scheduled run failed; cleared by the next successful run.
+  lastError?: string | null;
+  lastErrorAt?: string | null;
   leadsProcessedTotal: number;
+  // Admin schedule and budget (Job boards to scrape)
+  everyDays?: number;
+  runHourIst?: number;
+  monthlyBudgetUsd?: number;
+  // The token itself never comes back — only whether the panel set one.
+  apiTokenSet?: boolean;
+  apiTokenLast4?: string | null;
+}
+
+export interface ApifyUsage {
+  connected: boolean;
+  error?: string;
+  tokenSource: 'settings' | 'server' | null;
+  budgetUsd: number;
+  account?: string;
+  username?: string | null;
+  plan?: string | null;
+  usedUsd?: number;
+  limitUsd?: number | null;
+  cycleEnd?: string | null;
+  nextRun?: string | null;
 }
 
 export interface LmsSyncConfig {

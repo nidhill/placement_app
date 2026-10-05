@@ -167,7 +167,7 @@ export const PlacementOperations: React.FC<PlacementOperationsProps> = ({ onRefr
         preferredSkills: ['Git', 'Communication'],
         salaryRange: newSalary || '₹8,00,000 - ₹12,00,000 / annum',
         description: newDescription || `Exciting opportunity at ${newCompany}.`,
-        eligibleSchools: selectedSchool !== 'ALL' ? [selectedSchool] : ['School of Tech'],
+        eligibleSchools: selectedSchool !== 'ALL' ? [selectedSchool] : ['Tech School'],
         eligiblePrograms: selectedProgram !== 'ALL' ? [selectedProgram] : ['Full Stack Web Development']
       });
 

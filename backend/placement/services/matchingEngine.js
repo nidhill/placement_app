@@ -53,7 +53,9 @@ class JobMatchingService {
     const designationMatch = designationComparison.isCompatible;
     const designationExplanation = designationComparison.explanation;
     const studentProgram = (student.program || "").trim().toLowerCase();
-    const studentSchool = (student.school || "").trim().toLowerCase();
+    // "Tech School" (SHO App) and "School of Tech" (older jobs) are the same school.
+    const schoolKey = (s) => String(s || "").toLowerCase().replace(/\b(school|of|the)\b/g, "").replace(/[^a-z]/g, "");
+    const studentSchool = schoolKey(student.school);
     let programScoreRatio = 0;
     let programMatch = false;
     let programExplanation = "";
@@ -62,7 +64,7 @@ class JobMatchingService {
       programScoreRatio = 0.5;
     } else {
       const eligibleProgs = (job.eligiblePrograms || []).map((p) => p.toLowerCase());
-      const eligibleSchools = (job.eligibleSchools || []).map((s) => s.toLowerCase());
+      const eligibleSchools = (job.eligibleSchools || []).map(schoolKey);
       const exactProgramMatch = eligibleProgs.some(
         (p) => p === studentProgram || studentProgram.includes(p) || p.includes(studentProgram)
       );
@@ -74,11 +76,11 @@ class JobMatchingService {
       } else if (schoolMatch && eligibleProgs.length === 0) {
         programMatch = true;
         programScoreRatio = 0.85;
-        programExplanation = `\u2713 School of Tech curriculum alignment`;
+        programExplanation = `\u2713 ${student.school || "School"} curriculum alignment`;
       } else if (schoolMatch) {
         programMatch = true;
         programScoreRatio = 0.65;
-        programExplanation = `Compatible technical curriculum (${student.program})`;
+        programExplanation = `Compatible curriculum (${student.program})`;
       } else {
         programMatch = false;
         programScoreRatio = 0.2;

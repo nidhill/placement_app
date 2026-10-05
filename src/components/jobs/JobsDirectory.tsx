@@ -249,7 +249,7 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
         requiredSkills: skillsArray.length > 0 ? skillsArray : ['Communication', 'Problem Solving'],
         preferredSkills: ['Git', 'Agile'],
         educationRequirements: ['Bachelor in Computer Science or Equivalent Bootcamp'],
-        eligibleSchools: ['School of Tech'],
+        eligibleSchools: ['Tech School'],
         eligiblePrograms: ['Full Stack Web Development'],
         sourceChannel: newChannel,
         applicationUrl: newApplyUrl.trim() || 'https://haca.internal/direct-drive',
@@ -457,30 +457,44 @@ export const JobsDirectory: React.FC<JobsDirectoryProps> = ({ onRefreshData }) =
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
 
-        {/* Tech Category Filter */}
+        {/* Category filter: Tech, Design, Marketing */}
         <div className="relative">
           <select
             value={categoryFilter}
             onChange={e => setCategoryFilter(e.target.value)}
             className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-3 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer font-medium"
           >
-            <option value="ALL">Category: All Tech</option>
-            <option value="Software Development">Software Development</option>
-            <option value="Full Stack Development">Full Stack Development</option>
-            <option value="Frontend Development">Frontend Development</option>
-            <option value="Backend Development">Backend Development</option>
-            <option value="Mobile Development">Mobile Development</option>
-            <option value="Data Analytics">Data Analytics</option>
-            <option value="Data Engineering">Data Engineering</option>
-            <option value="AI / Machine Learning">AI / Machine Learning</option>
-            <option value="Cloud / DevOps">Cloud / DevOps</option>
-            <option value="Cybersecurity">Cybersecurity</option>
-            <option value="QA / Testing">QA / Testing</option>
-            <option value="UI/UX / Product Design">UI/UX / Product Design</option>
-            <option value="IT Support">IT Support</option>
-            <option value="Systems / Infrastructure">Systems / Infrastructure</option>
-            <option value="Database">Database</option>
-            <option value="Technical Business Analysis">Technical Business Analysis</option>
+            <option value="ALL">Category: All</option>
+            <optgroup label="Tech">
+              <option value="Software Development">Software Development</option>
+              <option value="Full Stack Development">Full Stack Development</option>
+              <option value="Frontend Development">Frontend Development</option>
+              <option value="Backend Development">Backend Development</option>
+              <option value="Mobile Development">Mobile Development</option>
+              <option value="Data Analytics">Data Analytics</option>
+              <option value="Data Engineering">Data Engineering</option>
+              <option value="AI / Machine Learning">AI / Machine Learning</option>
+              <option value="Cloud / DevOps">Cloud / DevOps</option>
+              <option value="Cybersecurity">Cybersecurity</option>
+              <option value="QA / Testing">QA / Testing</option>
+              <option value="IT Support">IT Support</option>
+              <option value="Systems / Infrastructure">Systems / Infrastructure</option>
+              <option value="Database">Database</option>
+              <option value="Technical Business Analysis">Technical Business Analysis</option>
+            </optgroup>
+            <optgroup label="Design">
+              <option value="UI/UX / Product Design">UI/UX / Product Design</option>
+              <option value="Graphic Design">Graphic Design</option>
+              <option value="Video Editing">Video Editing</option>
+              <option value="Motion Graphics">Motion Graphics</option>
+            </optgroup>
+            <optgroup label="Marketing">
+              <option value="Digital Marketing">Digital Marketing</option>
+              <option value="Performance Marketing">Performance Marketing</option>
+              <option value="SEO">SEO</option>
+              <option value="Social Media Marketing">Social Media Marketing</option>
+              <option value="Content Writing">Content Writing</option>
+            </optgroup>
           </select>
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>

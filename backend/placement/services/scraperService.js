@@ -121,8 +121,37 @@ class ApifyJobAdapter {
   }
 }
 class ApifyScraperService {
-  static getApiToken() {
-    return process.env.APIFY_API_TOKEN || null;
+  // A token the admin set on the panel wins; otherwise the server's own.
+  static async getApiToken() {
+    const cfg = await import_store.dbStore.getApifyConfig();
+    return (cfg.apiToken && String(cfg.apiToken).trim()) || process.env.APIFY_API_TOKEN || null;
+  }
+  // The account behind the token and what it has spent this billing cycle.
+  static async getUsage() {
+    const cfg = await import_store.dbStore.getApifyConfig();
+    const token = await this.getApiToken();
+    const source = cfg.apiToken ? 'settings' : (process.env.APIFY_API_TOKEN ? 'server' : null);
+    const base = { tokenSource: source, budgetUsd: Number(cfg.monthlyBudgetUsd) || 0 };
+    if (!token) return { ...base, connected: false, error: 'No Apify token is set.' };
+    try {
+      const [me, limits] = await Promise.all([
+        fetch(`https://api.apify.com/v2/users/me?token=${token}`).then(r => r.ok ? r.json() : Promise.reject(new Error(`Apify rejected the token (HTTP ${r.status})`))),
+        fetch(`https://api.apify.com/v2/users/me/limits?token=${token}`).then(r => r.ok ? r.json() : null),
+      ]);
+      const l = limits?.data || {};
+      return {
+        ...base,
+        connected: true,
+        account: me.data?.profile?.name || me.data?.username || 'Apify account',
+        username: me.data?.username || null,
+        plan: me.data?.plan?.id || null,
+        usedUsd: Math.round((l.current?.monthlyUsageUsd || 0) * 100) / 100,
+        limitUsd: l.limits?.maxMonthlyUsageUsd ?? null,
+        cycleEnd: l.monthlyUsageCycle?.endAt || null,
+      };
+    } catch (err) {
+      return { ...base, connected: false, error: err.message };
+    }
   }
   static getConfiguredActorId() {
     return process.env.APIFY_ACTOR_ID || null;
@@ -183,7 +212,7 @@ class ApifyScraperService {
    * Tests the Apify connection and actor configuration.
    */
   static async testConnection() {
-    const token = this.getApiToken();
+    const token = await this.getApiToken();
     const actorId = this.getConfiguredActorId();
     if (!token) {
       return {
@@ -239,10 +268,20 @@ class ApifyScraperService {
    * inserts them into the existing database store, and returns detailed metrics.
    */
   static async fetchAndIngestJobs(actor, options) {
-    const token = this.getApiToken();
+    const token = await this.getApiToken();
     const configuredActorId = this.getConfiguredActorId();
     if (!token) {
-      throw new Error("APIFY_API_TOKEN is not configured in server environment.");
+      throw new Error("No Apify token is set — add one on Job boards to scrape, or APIFY_API_TOKEN on the server.");
+    }
+    // The admin's monthly budget: once the account has spent it this billing
+    // cycle, no run starts — scheduled or Run now — until the cycle resets
+    // or the budget is raised.
+    const budget = Number((await import_store.dbStore.getApifyConfig()).monthlyBudgetUsd) || 0;
+    if (budget > 0) {
+      const usage = await this.getUsage();
+      if (usage.connected && usage.usedUsd >= budget) {
+        throw new Error(`Monthly budget reached: $${usage.usedUsd} of $${budget} spent this cycle. Raise the budget or wait for the cycle to reset${usage.cycleEnd ? ` on ${new Date(usage.cycleEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })}` : ''}.`);
+      }
     }
     let rawItems = [];
     let resolvedActorTitle = "LinkedIn Jobs Scraper";
@@ -370,6 +409,8 @@ class ApifyScraperService {
     const now = (/* @__PURE__ */ new Date()).toISOString();
     await import_store.dbStore.updateApifyConfig({
       lastRunTimestamp: now,
+      lastError: null,
+      lastErrorAt: null,
       leadsProcessedTotal: config.leadsProcessedTotal + newIngested
     }, actor);
     console.log("----------------------------------------------------");

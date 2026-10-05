@@ -24,55 +24,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLi
 //
 // server/placement/services/resumeAi.js sends the identical request: same model,
 // same temperature, same response_format. Nothing is lost by going through it.
-async function callGroqDirect(prompt: string): Promise<string> {
-  const apiKey = (import.meta as any).env?.GROQ_API_KEY || (import.meta as any).env?.VITE_GROQ_API_KEY || '';
-  if (!apiKey) {
-    throw new Error('Groq API key is not configured');
-  }
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'openai/gpt-oss-120b',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.2
-    })
-  });
-
-  if (!response.ok) {
-    const fallbackRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-20b',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.2
-      })
-    });
-    if (!fallbackRes.ok) {
-      throw new Error(`Groq AI request failed (${response.status})`);
-    }
-    const fbData = await fallbackRes.json();
-    return fbData.choices[0].message.content;
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
-}
-
+// Always through the server (GROQ_API_KEY lives there). A browser-side call
+// would need the key compiled into the bundle, readable by anyone.
 async function callGemini(prompt: string): Promise<string> {
-  try {
-    return await api.aiComplete(prompt);
-  } catch (err) {
-    console.warn("Server AI complete failed, falling back to direct Groq completion:", err);
-    return callGroqDirect(prompt);
-  }
+  return api.aiComplete(prompt);
 }
 
 export function parseResumeLocallyFromText(documentText: string): Partial<ResumeData> {

@@ -17,7 +17,7 @@ const TERMS_PER_RUN = 5;
 const BOARD_LABEL = { linkedin: 'LinkedIn', indeed: 'Indeed', glassdoor: 'Glassdoor', naukri: 'Naukri' };
 
 const DEFAULTS = {
-  searchTerms: ['Frontend Developer', 'Full Stack Developer', 'React Developer', 'Python Developer', 'Data Analyst', 'MERN Stack Developer', 'UI UX Designer', 'Graphic Designer', 'Video Editor', 'Motion Graphics', 'Digital Marketing', 'Performance Marketing', 'SEO Specialist', 'Social Media Marketing', 'Content Writer', 'Accountant'],
+  searchTerms: ['Frontend Developer', 'Full Stack Developer', 'React Developer', 'Python Developer', 'Data Analyst', 'MERN Stack Developer', 'UI UX Designer', 'Graphic Designer', 'Video Editor', 'Motion Graphics', 'Digital Marketing', 'Performance Marketing', 'SEO Specialist', 'Social Media Marketing', 'Content Writer'],   // Tech, Design and Marketing only
   locations: ['India'],          // one run per location; 'India' covers every city
   boards: ALL_BOARDS,
   maxPerSource: 100,             // per board, per run (actor max)

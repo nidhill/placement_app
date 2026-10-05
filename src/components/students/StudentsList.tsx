@@ -183,9 +183,9 @@ export const StudentsList: React.FC<StudentsListProps> = ({
               className="appearance-none bg-white border border-border text-slate-700 text-xs py-1.5 pl-2.5 pr-6 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
             >
               <option value="ALL">All Schools</option>
-              <option value="School of Tech">School of Tech</option>
-              <option value="School of Design">School of Design</option>
-              <option value="School of Marketing">School of Marketing</option>
+              <option value="Tech School">Tech School</option>
+              <option value="Design School">Design School</option>
+              <option value="Marketing School">Marketing School</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>

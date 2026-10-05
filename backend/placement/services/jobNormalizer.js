@@ -17,7 +17,8 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var jobNormalizer_exports = {};
 __export(jobNormalizer_exports, {
-  JobNormalizer: () => JobNormalizer
+  JobNormalizer: () => JobNormalizer,
+  schoolsAndPrograms: () => schoolsAndPrograms
 });
 module.exports = __toCommonJS(jobNormalizer_exports);
 var import_techClassifier = require('./techClassifier');
@@ -82,8 +83,44 @@ const TECH_SKILL_DICTIONARY = [
   "Jest",
   "Cypress",
   "Selenium",
-  "Automation"
+  "Automation",
+  // Marketing
+  "Google Ads", "Meta Ads", "Facebook Ads", "Google Analytics", "SEO", "SEM", "Keyword Research", "Content Marketing",
+  "Social Media Marketing", "Email Marketing", "Copywriting", "WordPress", "HubSpot", "Semrush", "Ahrefs", "Shopify",
+  // Design and video
+  "Photoshop", "Illustrator", "InDesign", "CorelDRAW", "Canva", "Premiere Pro", "After Effects", "Final Cut Pro",
+  "DaVinci Resolve", "Blender", "Cinema 4D", "Motion Graphics", "Video Editing", "Typography", "Branding"
 ];
+// Fallback skills when a listing names none, per category.
+const CATEGORY_DEFAULT_SKILLS = {
+  "Graphic Design": ["Photoshop", "Illustrator", "Canva", "Typography"],
+  "Video Editing": ["Premiere Pro", "After Effects", "Video Editing", "DaVinci Resolve"],
+  "Motion Graphics": ["After Effects", "Motion Graphics", "Illustrator", "Premiere Pro"],
+  "Performance Marketing": ["Google Ads", "Meta Ads", "Google Analytics", "Excel"],
+  "SEO": ["SEO", "Keyword Research", "Google Analytics", "Semrush"],
+  "Social Media Marketing": ["Social Media Marketing", "Meta Ads", "Canva", "Copywriting"],
+  "Content Writing": ["Copywriting", "Content Marketing", "SEO", "WordPress"],
+  "Digital Marketing": ["SEO", "Google Ads", "Social Media Marketing", "Google Analytics"]
+};
+// Which HACA school (and programmes) a category belongs to. School names are
+// exactly the SHO App's (schools collection), so matching compares like with like.
+const DESIGN_CATS = ["Graphic Design", "Video Editing", "Motion Graphics"];
+const MARKETING_CATS = ["Performance Marketing", "SEO", "Social Media Marketing", "Content Writing", "Digital Marketing"];
+function schoolsAndPrograms(category) {
+  if (DESIGN_CATS.includes(category)) {
+    return { schools: ["Design School"], programs: category === "Graphic Design" ? ["Graphic Design"] : ["Video Editing", "Motion Graphics"] };
+  }
+  if (MARKETING_CATS.includes(category)) {
+    return { schools: ["Marketing School"], programs: category === "Performance Marketing" ? ["Performance Marketing", "Digital Marketing"] : ["Digital Marketing"] };
+  }
+  if (category === "UI/UX / Product Design") return { schools: ["Design School", "Tech School"], programs: ["UI/UX Product Design", "UI-UX"] };
+  const programs = category === "Full Stack Development" || category === "Frontend Development" ? ["Full Stack Web Development", "MERN"]
+    : category === "Backend Development" ? ["Python Development", "Full Stack Web Development", "MERN", "Python"]
+    : category === "Data Analytics" ? ["Data Analytics"]
+    : category === "AI / Machine Learning" || category === "Data Engineering" ? ["Data Analytics", "Python Development", "Python"]
+    : ["Full Stack Web Development", "Python Development", "MERN", "Python"];
+  return { schools: ["Tech School"], programs };
+}
 class JobNormalizer {
   /**
    * Scans title and text for recognized technical skills.
@@ -98,7 +135,9 @@ class JobNormalizer {
         matched.add(skill);
       }
     }
-    if (matched.size === 0) {
+    if (matched.size === 0 && CATEGORY_DEFAULT_SKILLS[category]) {
+      CATEGORY_DEFAULT_SKILLS[category].forEach((s) => matched.add(s));
+    } else if (matched.size === 0) {
       if (category === "Full Stack Development") {
         ["React", "Node.js", "JavaScript", "SQL"].forEach((s) => matched.add(s));
       } else if (category === "Frontend Development") {
@@ -201,7 +240,8 @@ class JobNormalizer {
     const normalizedDesignation = import_designationNormalizer.DesignationNormalizer.normalize(title);
     const allSkills = this.extractSkills(title, description, classification.category);
     const requiredSkills = allSkills.slice(0, 4);
-    const preferredSkills = allSkills.length > 4 ? allSkills.slice(4, 7) : ["Git", "Agile"];
+    const isTechCategory = !CATEGORY_DEFAULT_SKILLS[classification.category];
+    const preferredSkills = allSkills.length > 4 ? allSkills.slice(4, 7) : isTechCategory ? ["Git", "Agile"] : [];
     const { requirement: experienceRequirement, minYears: minExperienceYears } = this.parseExperience(rawItem.experienceLevel, description);
     let employmentType = "FULL_TIME";
     const contract = (rawItem.contractType || "").toLowerCase();
@@ -214,24 +254,7 @@ class JobNormalizer {
     } else if (rawItem.salaryMin && rawItem.salaryMax) {
       salaryRange = `${rawItem.salaryCurrency || "$"}${rawItem.salaryMin} - ${rawItem.salaryMax} / ${rawItem.salaryPeriod || "yr"}`;
     }
-    const eligibleSchools = ["School of Tech"];
-    const eligiblePrograms = [];
-    if (classification.category === "Full Stack Development") {
-      eligiblePrograms.push("Full Stack Web Development");
-    } else if (classification.category === "Frontend Development") {
-      eligiblePrograms.push("Full Stack Web Development");
-    } else if (classification.category === "Backend Development") {
-      eligiblePrograms.push("Python Development", "Full Stack Web Development");
-    } else if (classification.category === "Data Analytics") {
-      eligiblePrograms.push("Data Analytics");
-    } else if (classification.category === "AI / Machine Learning" || classification.category === "Data Engineering") {
-      eligiblePrograms.push("Data Analytics", "Python Development");
-    } else if (classification.category === "UI/UX / Product Design") {
-      eligibleSchools.push("School of Design");
-      eligiblePrograms.push("UI/UX Product Design");
-    } else {
-      eligiblePrograms.push("Full Stack Web Development", "Python Development");
-    }
+    const { schools: eligibleSchools, programs: eligiblePrograms } = schoolsAndPrograms(classification.category);
     const externalUrl = rawItem.applyUrl || rawItem.jobUrl || rawItem.externalApplicationLink || rawItem.link || rawItem.url || `https://www.google.com/search?q=${encodeURIComponent(company + " " + title + " apply")}`;
     const externalJobId = rawItem.id ? String(rawItem.id) : void 0;
     // postedDate is the board's own posting date; left empty when the board

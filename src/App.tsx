@@ -238,7 +238,7 @@ export default function App() {
                 <CandidateMatchingView onRefreshData={() => setRefreshTrigger(prev => prev + 1)} />
               )}
               {activeNav === 'job_sources' && (
-                <IntegrationsView />
+                <IntegrationsView isAdmin={currentUser.role === 'MAIN_ADMIN'} />
               )}
               {activeNav === 'follow_ups' && (
                 <StudentsList onRefreshData={() => setRefreshTrigger(prev => prev + 1)} />
@@ -276,7 +276,7 @@ export default function App() {
               )}
 
               {activeNav === 'integrations' && (
-                <IntegrationsView />
+                <IntegrationsView isAdmin={currentUser.role === 'MAIN_ADMIN'} />
               )}
 
               {activeNav === 'audit_logs' && (

@@ -425,6 +425,7 @@ const FOREIGN_CITIES_AND_REGIONS = [
   "colombo",
   "kathmandu"
 ];
+const STATE_CODES = { AN: "Andaman and Nicobar Islands", AP: "Andhra Pradesh", AR: "Arunachal Pradesh", AS: "Assam", BR: "Bihar", CH: "Chandigarh", CT: "Chhattisgarh", CG: "Chhattisgarh", DL: "Delhi", GA: "Goa", GJ: "Gujarat", HR: "Haryana", HP: "Himachal Pradesh", JK: "Jammu and Kashmir", JH: "Jharkhand", KA: "Karnataka", KL: "Kerala", LA: "Ladakh", MP: "Madhya Pradesh", MH: "Maharashtra", MN: "Manipur", ML: "Meghalaya", MZ: "Mizoram", NL: "Nagaland", OR: "Odisha", OD: "Odisha", PB: "Punjab", PY: "Puducherry", RJ: "Rajasthan", SK: "Sikkim", TN: "Tamil Nadu", TS: "Telangana", TG: "Telangana", TR: "Tripura", UP: "Uttar Pradesh", UK: "Uttarakhand", UT: "Uttarakhand", WB: "West Bengal" };
 class IndiaLocationFilter {
   /**
    * Evaluates any combination of structured metadata and free text location fields.
@@ -641,8 +642,18 @@ class IndiaLocationFilter {
    * Helper to ensure formatted location clearly indicates India
    */
   static formatNormalizedLocation(original, countryCode) {
-    const trimmed = original.trim();
+    let trimmed = original.trim();
     if (!trimmed) return "India";
+    // Indeed reports "MH, IN" / "Remote, IN": state code + country code.
+    const coded = trimmed.match(/^(.*?),\s*IN$/i);
+    if (coded) {
+      const head = coded[1].trim();
+      const parts = head.split(/\s*,\s*/);
+      const last = parts[parts.length - 1].toUpperCase();
+      if (STATE_CODES[last]) parts[parts.length - 1] = STATE_CODES[last];
+      trimmed = parts.length === 1 && STATE_CODES[last] ? STATE_CODES[last] : parts.join(", ");
+      return `${trimmed}, India`;
+    }
     if (/india/i.test(trimmed)) return trimmed;
     if (countryCode === "IN") {
       return `${trimmed}, India`;

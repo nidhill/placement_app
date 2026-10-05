@@ -6,7 +6,7 @@ import {
   RejectionFeedbackRecord, 
   AuditLog, 
   ManagementKPIs, 
-  ApifyScraperConfig, 
+  ApifyScraperConfig, ApifyUsage, 
   LmsSyncConfig, 
   JobMatchResult,
   UserRole,
@@ -38,37 +38,6 @@ const TOKEN_KEY = 'placement_token';
 
 export function getToken(): string | null { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } }
 export function setToken(t: string | null) { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ } }
-
-const APP_STATUS_OVERRIDES_KEY = 'haca_app_status_overrides';
-
-function getStatusOverrides(): Record<string, { status: ApplicationStatus; updatedAt: string }> {
-  try {
-    const raw = localStorage.getItem(APP_STATUS_OVERRIDES_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveStatusOverride(applicationId: string, status: ApplicationStatus) {
-  try {
-    const current = getStatusOverrides();
-    current[applicationId] = { status, updatedAt: new Date().toISOString() };
-    localStorage.setItem(APP_STATUS_OVERRIDES_KEY, JSON.stringify(current));
-  } catch {
-    // ignore
-  }
-}
-
-function removeStatusOverride(applicationId: string) {
-  try {
-    const current = getStatusOverrides();
-    delete current[applicationId];
-    localStorage.setItem(APP_STATUS_OVERRIDES_KEY, JSON.stringify(current));
-  } catch {
-    // ignore
-  }
-}
 
 class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -148,7 +117,7 @@ class ApiClient {
   }
 
   // The Resume Agent's model call. It goes through the server so the AI key
-  // stays there — see server/placement/services/resumeAi.js in SHO-PRODUCTION.
+  // stays there — see server/placement/services/resumeAi.js.
   public async aiComplete(prompt: string): Promise<string> {
     const r = await this.request<{ text: string }>('/api/placement/ai/complete', { method: 'POST', body: JSON.stringify({ prompt }) });
     return r.text;
@@ -191,7 +160,11 @@ class ApiClient {
     return this.request('/api/placement/admin/integrations/apify');
   }
 
-  public async updateApifyConfig(updates: Partial<ApifyScraperConfig>): Promise<ApifyScraperConfig> {
+  public async getApifyUsage(): Promise<ApifyUsage> {
+    return this.request('/api/placement/admin/integrations/apify/usage');
+  }
+
+  public async updateApifyConfig(updates: Partial<ApifyScraperConfig> & { apiToken?: string; clearApiToken?: boolean }): Promise<ApifyScraperConfig> {
     return this.request('/api/placement/admin/integrations/apify', {
       method: 'PATCH',
       body: JSON.stringify(updates)
@@ -447,20 +420,7 @@ class ApiClient {
     if (params?.batch) searchParams.set('batch', params.batch);
     if (params?.status) searchParams.set('status', params.status);
     const qs = searchParams.toString() ? `?${searchParams.toString()}` : '';
-    const res = await this.request<{ applications: JobApplication[] }>(`/api/placement/applications${qs}`);
-
-    // Merge status overrides (e.g. manual updates by students)
-    const overrides = getStatusOverrides();
-    if (res?.applications && Object.keys(overrides).length > 0) {
-      res.applications = res.applications.map(app => {
-        const ovr = overrides[app.id];
-        if (ovr) {
-          return { ...app, status: ovr.status, updatedAt: ovr.updatedAt || app.updatedAt };
-        }
-        return app;
-      });
-    }
-    return res;
+    return this.request(`/api/placement/applications${qs}`);
   }
 
   public async applyForJob(jobId: string, studentId?: string): Promise<{
@@ -500,28 +460,13 @@ class ApiClient {
   }
 
   public async updateApplicationStatus(applicationId: string, status: ApplicationStatus): Promise<{ application: JobApplication; message: string }> {
-    try {
-      const res = await this.request<{ application: JobApplication; message: string }>(`/api/placement/applications/${applicationId}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status })
-      });
-      saveStatusOverride(applicationId, status);
-      return res;
-    } catch (err: any) {
-      // If server returns permission error (e.g. live backend restricts to OPS before deployment)
-      if (err.status === 403 || String(err.message).includes('PLACEMENT_OFFICER') || String(err.message).includes('MAIN_ADMIN') || String(err.message).includes('Permission')) {
-        saveStatusOverride(applicationId, status);
-        return {
-          application: { id: applicationId, status } as any,
-          message: `Application status updated to ${status}.`
-        };
-      }
-      throw err;
-    }
+    return this.request(`/api/placement/applications/${applicationId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status })
+    });
   }
 
   public async withdrawApplication(applicationId: string): Promise<{ success: boolean; message: string }> {
-    removeStatusOverride(applicationId);
     return this.request(`/api/placement/applications/${applicationId}`, {
       method: 'DELETE'
     });
