@@ -25,7 +25,8 @@ import {
   Mail,
   Phone,
   GraduationCap,
-  Briefcase
+  Briefcase,
+  ArrowDownUp
 } from 'lucide-react';
 
 interface ApplicationsTrackerProps {
@@ -33,6 +34,7 @@ interface ApplicationsTrackerProps {
 }
 
 export type DateFilterRange = 'ALL' | 'WEEK' | 'MONTH' | 'YEAR';
+export type DateSortOrder = 'DESC' | 'ASC';
 
 export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefreshData }) => {
   const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -42,6 +44,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
   const [jobSourceFilter, setJobSourceFilter] = useState<'ALL' | 'HACA'>('ALL');
   const [courseFilter, setCourseFilter] = useState<string>('ALL');
   const [dateFilter, setDateFilter] = useState<DateFilterRange>('ALL');
+  const [dateSortOrder, setDateSortOrder] = useState<DateSortOrder>('DESC');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Detail modal
@@ -322,6 +325,24 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
     return true;
   });
 
+  // Helper to extract application date timestamp for chronological sorting
+  const getApplicationTimestamp = (app: JobApplication): number => {
+    const timestamp = app.appliedAt || app.confirmedAt || app.startedAt || app.createdAt || app.updatedAt;
+    if (!timestamp) return 0;
+    const time = new Date(timestamp).getTime();
+    return isNaN(time) ? 0 : time;
+  };
+
+  // Chronologically sorted applications based on selected dateSortOrder (Last to First or First to Last)
+  const sortedFilteredApps = [...filteredApps].sort((a, b) => {
+    const timeA = getApplicationTimestamp(a);
+    const timeB = getApplicationTimestamp(b);
+    if (dateSortOrder === 'DESC') {
+      return timeB - timeA;
+    }
+    return timeA - timeB;
+  });
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       
@@ -574,6 +595,19 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
               <option value="YEAR">This Year (Academic Cycle)</option>
             </select>
           </div>
+
+          {/* Application Date Sort Filter Dropdown (Last to First / First to Last) */}
+          <div className="flex items-center gap-1.5 bg-muted border border-border rounded-lg px-2.5 py-1.5 text-xs text-slate-700">
+            <ArrowDownUp className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <select
+              value={dateSortOrder}
+              onChange={e => setDateSortOrder(e.target.value as DateSortOrder)}
+              className="bg-transparent font-semibold text-slate-700 focus:outline-none cursor-pointer"
+            >
+              <option value="DESC">Last to First (Newest)</option>
+              <option value="ASC">First to Last (Oldest)</option>
+            </select>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -594,6 +628,11 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                 {dateFilter === 'WEEK' ? 'Week' : dateFilter === 'MONTH' ? 'Month' : 'Year'}
               </span>
             )}
+            {dateSortOrder === 'ASC' && (
+              <span className="ml-1.5 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                First to Last
+              </span>
+            )}
             {helpFilter === 'HELP_REQUESTED' && (
               <span className="ml-1.5 text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
                 Help Requested Only
@@ -601,7 +640,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
             )}
           </span>
 
-          {(stageFilter !== 'ALL' || helpFilter !== 'ALL' || jobSourceFilter !== 'ALL' || courseFilter !== 'ALL' || dateFilter !== 'ALL' || searchQuery) && (
+          {(stageFilter !== 'ALL' || helpFilter !== 'ALL' || jobSourceFilter !== 'ALL' || courseFilter !== 'ALL' || dateFilter !== 'ALL' || dateSortOrder !== 'DESC' || searchQuery) && (
             <button
               onClick={() => {
                 setStageFilter('ALL');
@@ -609,6 +648,7 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                 setJobSourceFilter('ALL');
                 setCourseFilter('ALL');
                 setDateFilter('ALL');
+                setDateSortOrder('DESC');
                 setSearchQuery('');
               }}
               className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer"
@@ -629,20 +669,20 @@ export const ApplicationsTracker: React.FC<ApplicationsTrackerProps> = ({ onRefr
                 <th className="py-3 px-4">Batch Number</th>
                 <th className="py-3 px-4">Job Opportunity</th>
                 <th className="py-3 px-4">Status & Help State</th>
-                <th className="py-3 px-4">Reason / Notes</th>
+                <th className="py-3 px-4">Application Date / Notes</th>
                 <th className="py-3 px-4">Source</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/70">
-              {filteredApps.length === 0 ? (
+              {sortedFilteredApps.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
                     No applications match the current filter criteria.
                   </td>
                 </tr>
               ) : (
-                filteredApps.map(app => (
+                sortedFilteredApps.map(app => (
                   <tr key={app.id} className="hover:bg-muted/60 transition-colors">
                     
                     {/* Candidate */}

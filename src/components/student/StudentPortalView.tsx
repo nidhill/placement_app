@@ -48,6 +48,7 @@ import { extractResumeDataFromFile } from '../resume/aiService.ts';
 import { loadAllVersions } from '../resume/resumeStore.ts';
 import { ResumeData } from '../resume/types.ts';
 import { normalizeRole } from '../../lib/jobMatching.ts';
+import { INDIAN_STATES, INDIAN_UNION_TERRITORIES, isJobMatchingLocation } from '../../lib/indiaStates.ts';
 
 export function getDisplayJobCategory(job: any): string {
   const norm = normalizeRole(job.title || job.normalizedDesignation);
@@ -170,7 +171,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   const [jobsViewTab, setJobsViewTab] = useState<'recommended' | 'all'>('recommended');
   const [jobCategoryFilter, setJobCategoryFilter] = useState('ALL');
   const [jobDesignationFilter, setJobDesignationFilter] = useState('');
-  const [jobLocationFilter, setJobLocationFilter] = useState('');
+  const [jobLocationFilter, setJobLocationFilter] = useState('ALL');
   const [jobWorkModeFilter, setJobWorkModeFilter] = useState('ALL');
   const [selectedJobForModal, setSelectedJobForModal] = useState<JobListing | null>(null);
   const [selectedJobLoading, setSelectedJobLoading] = useState(false);
@@ -1780,7 +1781,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     : 'text-slate-600 hover:text-foreground'
                 }`}
               >
-                HACA Jobs ({allJobs.filter(j => j.status === 'ACTIVE' && j.sourceChannel !== 'AI_JOB_SCRAPER' && j.sourceChannel !== 'ATS_JOB_API').length})
+                All Opportunities ({allJobs.filter(j => j.status === 'ACTIVE').length})
               </button>
             </div>
           </div>
@@ -1852,16 +1853,27 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               />
             </div>
 
-            {/* Location Finding Bar */}
-            <div className="relative w-40">
-              <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Location (city/state)..."
+            {/* Location Finding Dropdown (All Indian States & UTs) */}
+            <div className="relative">
+              <MapPin className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select
                 value={jobLocationFilter}
                 onChange={e => setJobLocationFilter(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-slate-800"
-              />
+                className="appearance-none bg-muted border border-border text-slate-700 text-xs py-1.5 pl-7 pr-7 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer font-medium max-w-[210px] truncate"
+              >
+                <option value="ALL">Location: All States (India)</option>
+                <optgroup label="States">
+                  {INDIAN_STATES.map(st => (
+                    <option key={st} value={st}>{st}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Union Territories">
+                  {INDIAN_UNION_TERRITORIES.map(ut => (
+                    <option key={ut} value={ut}>{ut}</option>
+                  ))}
+                </optgroup>
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
             {/* Work Mode Filter */}
@@ -1879,13 +1891,13 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {(jobSearch || jobCategoryFilter !== 'ALL' || jobDesignationFilter || jobLocationFilter || jobWorkModeFilter !== 'ALL') && (
+            {(jobSearch || jobCategoryFilter !== 'ALL' || jobDesignationFilter || (jobLocationFilter && jobLocationFilter !== 'ALL') || jobWorkModeFilter !== 'ALL') && (
               <button
                 onClick={() => {
                   setJobSearch('');
                   setJobCategoryFilter('ALL');
                   setJobDesignationFilter('');
-                  setJobLocationFilter('');
+                  setJobLocationFilter('ALL');
                   setJobWorkModeFilter('ALL');
                 }}
                 className="text-[11px] text-slate-500 hover:text-slate-800 underline ml-auto cursor-pointer"
@@ -1908,9 +1920,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                                    job.title.toLowerCase().includes(df);
                 if (!desigMatch) return false;
               }
-              if (jobLocationFilter.trim()) {
-                const locQ = jobLocationFilter.toLowerCase().trim();
-                if (!(job.location || '').toLowerCase().includes(locQ)) return false;
+              if (jobLocationFilter && jobLocationFilter !== 'ALL') {
+                if (!isJobMatchingLocation(job.location, jobLocationFilter)) return false;
               }
               if (jobWorkModeFilter !== 'ALL') {
                 const combined = `${job.location || ''} ${job.title || ''} ${job.description || ''}`.toLowerCase();
@@ -1924,7 +1935,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 const q = jobSearch.toLowerCase();
                 const inTitle = job.title.toLowerCase().includes(q);
                 const inComp = job.company.toLowerCase().includes(q);
-                const inLoc = job.location.toLowerCase().includes(q);
+                const inLoc = (job.location || '').toLowerCase().includes(q) || isJobMatchingLocation(job.location, q);
                 const inSkills = job.requiredSkills.some((s: string) => s.toLowerCase().includes(q));
                 if (!inTitle && !inComp && !inLoc && !inSkills) return false;
               }
@@ -1933,7 +1944,6 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
             const filteredAll = allJobs.filter(job => {
               if (job.status !== 'ACTIVE') return false;
-              if (job.sourceChannel === 'AI_JOB_SCRAPER' || job.sourceChannel === 'ATS_JOB_API') return false;
               if (jobCategoryFilter !== 'ALL' && getDisplayJobCategory(job) !== jobCategoryFilter && job.category !== jobCategoryFilter) return false;
               if (jobDesignationFilter.trim()) {
                 const df = jobDesignationFilter.toLowerCase().trim();
@@ -1941,9 +1951,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                                    job.title.toLowerCase().includes(df);
                 if (!desigMatch) return false;
               }
-              if (jobLocationFilter.trim()) {
-                const locQ = jobLocationFilter.toLowerCase().trim();
-                if (!(job.location || '').toLowerCase().includes(locQ)) return false;
+              if (jobLocationFilter && jobLocationFilter !== 'ALL') {
+                if (!isJobMatchingLocation(job.location, jobLocationFilter)) return false;
               }
               if (jobWorkModeFilter !== 'ALL') {
                 const combined = `${job.location || ''} ${job.title || ''} ${job.description || ''}`.toLowerCase();
@@ -1957,18 +1966,18 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 const q = jobSearch.toLowerCase();
                 const inTitle = job.title.toLowerCase().includes(q);
                 const inComp = job.company.toLowerCase().includes(q);
-                const inLoc = job.location.toLowerCase().includes(q);
+                const inLoc = job.location.toLowerCase().includes(q) || isJobMatchingLocation(job.location, q);
                 const inSkills = job.requiredSkills.some((s: string) => s.toLowerCase().includes(q));
                 if (!inTitle && !inComp && !inLoc && !inSkills) return false;
               }
               return true;
             });
 
-            const totalHacaJobs = allJobs.filter(j => j.status === 'ACTIVE' && j.sourceChannel !== 'AI_JOB_SCRAPER' && j.sourceChannel !== 'ATS_JOB_API');
+            const totalActiveJobs = allJobs.filter(j => j.status === 'ACTIVE');
             const currentCount = jobsViewTab === 'recommended' ? filteredRecs.length : filteredAll.length;
             const totalCount = jobsViewTab === 'recommended' 
               ? compatibleRecs.length
-              : totalHacaJobs.length;
+              : totalActiveJobs.length;
 
             return (
               <div className="flex items-center justify-between px-1 py-1 text-xs text-slate-500 font-medium">
@@ -1977,12 +1986,19 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   {jobsViewTab === 'recommended' ? (
                     <span>Showing <strong>{currentCount}</strong> of <strong>{totalCount}</strong> matching opportunities for your profile</span>
                   ) : (
-                    <span>Showing <strong>{currentCount}</strong> of <strong>{totalCount}</strong> verified HACA placement opportunities</span>
+                    <span>Showing <strong>{currentCount}</strong> of <strong>{totalCount}</strong> active tech opportunities</span>
                   )}
                 </span>
-                {jobSearch && (
-                  <span className="text-[11px] text-slate-400">Search results for "{jobSearch}"</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {jobLocationFilter && jobLocationFilter !== 'ALL' && (
+                    <span className="text-[11px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 flex items-center gap-1 font-medium">
+                      <MapPin className="w-3 h-3 text-blue-500" /> {jobLocationFilter}
+                    </span>
+                  )}
+                  {jobSearch && (
+                    <span className="text-[11px] text-slate-400">Search results for "{jobSearch}"</span>
+                  )}
+                </div>
               </div>
             );
           })()}
@@ -2003,9 +2019,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 if (!desigMatch) return false;
               }
 
-              if (jobLocationFilter.trim()) {
-                const locQ = jobLocationFilter.toLowerCase().trim();
-                if (!(job.location || '').toLowerCase().includes(locQ)) return false;
+              if (jobLocationFilter && jobLocationFilter !== 'ALL') {
+                if (!isJobMatchingLocation(job.location, jobLocationFilter)) return false;
               }
 
               if (jobWorkModeFilter !== 'ALL') {
@@ -2021,7 +2036,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 const q = jobSearch.toLowerCase();
                 const inTitle = job.title.toLowerCase().includes(q);
                 const inComp = job.company.toLowerCase().includes(q);
-                const inLoc = job.location.toLowerCase().includes(q);
+                const inLoc = (job.location || '').toLowerCase().includes(q) || isJobMatchingLocation(job.location, q);
                 const inSkills = job.requiredSkills.some((s: string) => s.toLowerCase().includes(q));
                 if (!inTitle && !inComp && !inLoc && !inSkills) return false;
               }
@@ -2030,20 +2045,34 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             });
 
             if (displayRecs.length === 0) {
+              const allMatchingInLoc = allJobs.filter(job => {
+                if (job.status !== 'ACTIVE') return false;
+                if (jobLocationFilter && jobLocationFilter !== 'ALL') {
+                  if (!isJobMatchingLocation(job.location, jobLocationFilter)) return false;
+                }
+                return true;
+              }).length;
+
               return (
                 <div className="bg-white p-8 rounded-2xl border border-border text-center space-y-3">
                   <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
                     <Briefcase className="w-6 h-6" />
                   </div>
-                  <h4 className="font-bold text-foreground text-sm">No Matching Recommendations Found</h4>
+                  <h4 className="font-bold text-foreground text-sm">
+                    {jobLocationFilter && jobLocationFilter !== 'ALL'
+                      ? `No Recommended Roles Found in ${jobLocationFilter}`
+                      : 'No Matching Recommendations Found'}
+                  </h4>
                   <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    We filtered out non-matching positions so you only see roles aligned with your field. Switch to <strong>HACA Jobs</strong> to browse internal placement drives.
+                    {jobLocationFilter && jobLocationFilter !== 'ALL' && allMatchingInLoc > 0
+                      ? `There are ${allMatchingInLoc} open position${allMatchingInLoc > 1 ? 's' : ''} available in ${jobLocationFilter} under All Opportunities.`
+                      : 'We filtered out non-matching positions so you only see roles aligned with your field. Switch to All Opportunities to browse all open vacancies.'}
                   </p>
                   <button
                     onClick={() => setJobsViewTab('all')}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
                   >
-                    View HACA Jobs
+                    View All Opportunities {jobLocationFilter && jobLocationFilter !== 'ALL' && allMatchingInLoc > 0 ? `in ${jobLocationFilter} (${allMatchingInLoc})` : ''}
                   </button>
                 </div>
               );
@@ -2181,11 +2210,10 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             );
           })()}
 
-          {/* Job listings (HACA Jobs Tab) */}
+          {/* Job listings (All Opportunities Tab) */}
           {jobsViewTab === 'all' && (() => {
-            const hacaJobs = allJobs.filter(job => {
+            const currentTabJobs = allJobs.filter(job => {
               if (job.status !== 'ACTIVE') return false;
-              if (job.sourceChannel === 'AI_JOB_SCRAPER' || job.sourceChannel === 'ATS_JOB_API') return false;
               if (jobCategoryFilter !== 'ALL' && getDisplayJobCategory(job) !== jobCategoryFilter && job.category !== jobCategoryFilter) return false;
 
               if (jobDesignationFilter.trim()) {
@@ -2195,9 +2223,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 if (!desigMatch) return false;
               }
 
-              if (jobLocationFilter.trim()) {
-                const locQ = jobLocationFilter.toLowerCase().trim();
-                if (!(job.location || '').toLowerCase().includes(locQ)) return false;
+              if (jobLocationFilter && jobLocationFilter !== 'ALL') {
+                if (!isJobMatchingLocation(job.location, jobLocationFilter)) return false;
               }
 
               if (jobWorkModeFilter !== 'ALL') {
@@ -2213,7 +2240,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 const q = jobSearch.toLowerCase();
                 const inTitle = job.title.toLowerCase().includes(q);
                 const inComp = job.company.toLowerCase().includes(q);
-                const inLoc = job.location.toLowerCase().includes(q);
+                const inLoc = job.location.toLowerCase().includes(q) || isJobMatchingLocation(job.location, q);
                 const inSkills = job.requiredSkills.some((s: string) => s.toLowerCase().includes(q));
                 if (!inTitle && !inComp && !inLoc && !inSkills) return false;
               }
@@ -2221,23 +2248,43 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               return true;
             });
 
-            if (hacaJobs.length === 0) {
+            if (currentTabJobs.length === 0) {
               return (
                 <div className="bg-white p-8 rounded-2xl border border-border text-center space-y-3">
                   <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
                     <Briefcase className="w-6 h-6" />
                   </div>
-                  <h4 className="font-bold text-foreground text-sm">No HACA Jobs Found</h4>
+                  <h4 className="font-bold text-foreground text-sm">
+                    {jobLocationFilter && jobLocationFilter !== 'ALL'
+                      ? `No Active Positions Found in ${jobLocationFilter}`
+                      : 'No Opportunities Found'}
+                  </h4>
                   <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    No exclusive HACA campus drives or referral positions match your current search and filters.
+                    {jobLocationFilter && jobLocationFilter !== 'ALL'
+                      ? `No positions match your current filters in ${jobLocationFilter}. Try clearing other filters to see all jobs in this state.`
+                      : 'No open positions match your current filter criteria.'}
                   </p>
+                  {(jobLocationFilter !== 'ALL' || jobSearch || jobCategoryFilter !== 'ALL' || jobDesignationFilter || jobWorkModeFilter !== 'ALL') && (
+                    <button
+                      onClick={() => {
+                        setJobLocationFilter('ALL');
+                        setJobSearch('');
+                        setJobCategoryFilter('ALL');
+                        setJobDesignationFilter('');
+                        setJobWorkModeFilter('ALL');
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
+                    >
+                      Clear All Filters
+                    </button>
+                  )}
                 </div>
               );
             }
 
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {hacaJobs.map(job => {
+                {currentTabJobs.map(job => {
                   const alreadyApplied = myApplications.some(a => a.jobId === job.id && a.status === 'APPLIED');
                   const matchingRec = recommendedJobs.find(r => r.job.id === job.id);
 
