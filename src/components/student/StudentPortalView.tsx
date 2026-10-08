@@ -4,7 +4,6 @@ import { api } from '../../lib/api.ts';
 import { plainText, applyLink, getDisplayExperience } from '../../lib/text.ts';
 import { ApplicationStatusBadge, HelpStatusBadge } from '../common/StatusBadge.tsx';
 import { NavigationItem } from '../common/Sidebar.tsx';
-import { AIResumeAgent } from '../resume/AIResumeAgent.tsx';
 import { 
   Lock, 
   CheckCircle2, 
@@ -14,7 +13,6 @@ import {
   Calendar, 
   FileText, 
   Send,
-  Sparkles,
   Link as LinkIcon,
   Clock,
   X,
@@ -45,7 +43,6 @@ import {
   Wand2
 } from 'lucide-react';
 import { extractResumeDataFromFile } from '../resume/aiService.ts';
-import { loadAllVersions } from '../resume/resumeStore.ts';
 import { ResumeData } from '../resume/types.ts';
 import { normalizeRole } from '../../lib/jobMatching.ts';
 import { INDIAN_STATES, INDIAN_UNION_TERRITORIES, isJobMatchingLocation } from '../../lib/indiaStates.ts';
@@ -274,6 +271,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   const [notificationResponses, setNotificationResponses] = useState<Record<string, {
     response: 'YES' | 'NO' | '';
     status: ApplicationStatus | '';
+    interviewDate?: string;
+    interviewRound?: string;
+    interviewMode?: string;
     submitting?: boolean;
     successMsg?: string;
   }>>({});
@@ -293,13 +293,48 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   const handleNotificationSubmit = async (app: JobApplication) => {
     const curr = notificationResponses[app.id];
     if (!curr || !curr.status) return;
+    if (curr.status === 'INTERVIEW_SCHEDULED' && !curr.interviewDate) {
+      alert('Please select the scheduled interview date and time.');
+      return;
+    }
     setNotificationResponses(prev => ({
       ...prev,
       [app.id]: { ...curr, submitting: true }
     }));
     try {
-      await api.updateApplicationStatus(app.id, curr.status as ApplicationStatus);
-      setMyApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: curr.status as ApplicationStatus, updatedAt: new Date().toISOString() } : a));
+      const extraPayload = curr.status === 'INTERVIEW_SCHEDULED' && curr.interviewDate ? {
+        interviewDate: new Date(curr.interviewDate).toISOString(),
+        interviewRound: curr.interviewRound || 'Technical Screening',
+        interviewMode: curr.interviewMode || 'Online (Google Meet)'
+      } : undefined;
+
+      await api.updateApplicationStatus(app.id, curr.status as ApplicationStatus, extraPayload);
+      
+      const newInterviewEntry = extraPayload ? {
+        round: (app.interviewDates?.length || 0) + 1,
+        title: extraPayload.interviewRound,
+        date: extraPayload.interviewDate,
+        completed: false,
+        notes: extraPayload.interviewMode
+      } : null;
+
+      setMyApplications(prev => prev.map(a => {
+        if (a.id === app.id) {
+          const dates = [...(a.interviewDates || [])];
+          if (newInterviewEntry) dates.push(newInterviewEntry);
+          return {
+            ...a,
+            status: curr.status as ApplicationStatus,
+            updatedAt: new Date().toISOString(),
+            interviewDates: dates,
+            interviewDate: newInterviewEntry ? newInterviewEntry.date : (a as any).interviewDate,
+            interviewRound: newInterviewEntry ? newInterviewEntry.title : (a as any).interviewRound,
+            interviewMode: extraPayload ? extraPayload.interviewMode : (a as any).interviewMode
+          };
+        }
+        return a;
+      }));
+
       clearCheckInState(app.id);
       const progressStatuses: ApplicationStatus[] = ['SHORTLISTED', 'INTERVIEW_SCHEDULED', 'INTERVIEWED'];
       if (progressStatuses.includes(curr.status as ApplicationStatus)) {
@@ -336,19 +371,80 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   // ── Manual Status Update Flow ─────────────────────────────────────────────
   const [manualUpdateApp, setManualUpdateApp] = useState<JobApplication | null>(null);
   const [manualSelectedStatus, setManualSelectedStatus] = useState<ApplicationStatus | ''>('');
+  const [manualInterviewDate, setManualInterviewDate] = useState('');
+  const [manualInterviewRound, setManualInterviewRound] = useState('Technical Screening');
+  const [manualInterviewMode, setManualInterviewMode] = useState('Online (Google Meet)');
   const [manualUpdateSubmitting, setManualUpdateSubmitting] = useState(false);
 
   const handleOpenManualUpdate = (app: JobApplication) => {
     setManualUpdateApp(app);
     setManualSelectedStatus(app.status);
+    
+    // If the app already has a scheduled interview date, prefill
+    const latestIv = app.interviewDates && app.interviewDates.length > 0
+      ? app.interviewDates[app.interviewDates.length - 1]
+      : null;
+    const existingDate = latestIv?.date || (app as any).interviewDate || '';
+    if (existingDate) {
+      try {
+        const d = new Date(existingDate);
+        if (!isNaN(d.getTime())) {
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          setManualInterviewDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+        } else {
+          setManualInterviewDate('');
+        }
+      } catch {
+        setManualInterviewDate('');
+      }
+    } else {
+      setManualInterviewDate('');
+    }
+
+    setManualInterviewRound(latestIv?.title || (app as any).interviewRound || 'Technical Screening');
+    setManualInterviewMode((app as any).interviewMode || latestIv?.notes || 'Online (Google Meet)');
   };
 
   const handleManualStatusSubmit = async () => {
     if (!manualUpdateApp || !manualSelectedStatus) return;
+    if (manualSelectedStatus === 'INTERVIEW_SCHEDULED' && !manualInterviewDate) {
+      alert('Please specify the interview date and time.');
+      return;
+    }
     setManualUpdateSubmitting(true);
     try {
-      await api.updateApplicationStatus(manualUpdateApp.id, manualSelectedStatus as ApplicationStatus);
-      setMyApplications(prev => prev.map(a => a.id === manualUpdateApp.id ? { ...a, status: manualSelectedStatus as ApplicationStatus, updatedAt: new Date().toISOString() } : a));
+      const extraPayload = manualSelectedStatus === 'INTERVIEW_SCHEDULED' && manualInterviewDate ? {
+        interviewDate: new Date(manualInterviewDate).toISOString(),
+        interviewRound: manualInterviewRound.trim() || 'Technical Screening',
+        interviewMode: manualInterviewMode || 'Online (Google Meet)'
+      } : undefined;
+
+      await api.updateApplicationStatus(manualUpdateApp.id, manualSelectedStatus as ApplicationStatus, extraPayload);
+      
+      const newInterviewEntry = extraPayload ? {
+        round: (manualUpdateApp.interviewDates?.length || 0) + 1,
+        title: extraPayload.interviewRound,
+        date: extraPayload.interviewDate,
+        completed: false,
+        notes: extraPayload.interviewMode
+      } : null;
+
+      setMyApplications(prev => prev.map(a => {
+        if (a.id === manualUpdateApp.id) {
+          const dates = [...(a.interviewDates || [])];
+          if (newInterviewEntry) dates.push(newInterviewEntry);
+          return { 
+            ...a, 
+            status: manualSelectedStatus as ApplicationStatus, 
+            updatedAt: new Date().toISOString(),
+            interviewDates: dates,
+            interviewDate: newInterviewEntry ? newInterviewEntry.date : (a as any).interviewDate,
+            interviewRound: newInterviewEntry ? newInterviewEntry.title : (a as any).interviewRound,
+            interviewMode: extraPayload ? extraPayload.interviewMode : (a as any).interviewMode
+          };
+        }
+        return a;
+      }));
       
       const progressStatuses: ApplicationStatus[] = ['APPLIED', 'SHORTLISTED', 'INTERVIEW_SCHEDULED', 'INTERVIEWED'];
       if (progressStatuses.includes(manualSelectedStatus as ApplicationStatus)) {
@@ -366,7 +462,8 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       const statusLabel = (manualSelectedStatus as string).replaceAll('_', ' ');
       setManualUpdateApp(null);
       setManualSelectedStatus('');
-      setApplySuccessMessage(`Status for "${updatedTitle}" successfully updated to ${statusLabel}!`);
+      setManualInterviewDate('');
+      setApplySuccessMessage(`Status for "${updatedTitle}" successfully updated to ${statusLabel}${extraPayload ? ` with interview on ${new Date(extraPayload.interviewDate).toLocaleDateString()}` : ''}!`);
       setTimeout(() => setApplySuccessMessage(null), 5000);
       await loadData({ skipCache: true });
       if (onRefreshData) onRefreshData();
@@ -834,6 +931,16 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
     'OFFER_EXTENDED',
     'JOINED'
   ];
+
+  const getPipelineStageIndex = (st: string) => {
+    if (st === 'APPLIED') return 0;
+    if (st === 'SHORTLISTED') return 1;
+    if (st === 'INTERVIEW_SCHEDULED' || st === 'INTERVIEWED') return 2;
+    if (st === 'SELECTED') return 3;
+    if (st === 'OFFER_RECEIVED' || st === 'OFFER_EXTENDED') return 4;
+    if (st === 'JOINED') return 5;
+    return -1;
+  };
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -1408,14 +1515,6 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     <span>Verified CV On File</span>
                   </div>
                 )}
-                <button 
-                  type="button" 
-                  onClick={() => onNavigate('student_resume_builder')}
-                  className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900 rounded-lg border border-slate-200 transition-colors whitespace-nowrap self-start sm:self-end flex items-center gap-2"
-                >
-                  <Sparkles className="w-4 h-4 text-violet-600" />
-                  Don't have a resume?
-                </button>
               </div>
             </div>
 
@@ -1738,17 +1837,6 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       )}
 
       {/* =========================================================
-          2B. SUB-VIEW: AI RESUME AGENT
-          ========================================================= */}
-      {activeTab === 'student_resume_builder' && (
-        <AIResumeAgent
-          studentId={currentStudentId}
-          profile={profile}
-          onBack={() => onNavigate('student_profile')}
-        />
-      )}
-
-      {/* =========================================================
           3. SUB-VIEW: FIND JOBS (student_jobs)
           ========================================================= */}
       {(currentView === 'student_jobs' || currentView === 'jobs' || currentView === 'recommended_jobs') && (
@@ -1761,7 +1849,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               </p>
             </div>
 
-            {/* Tab Switcher: Recommended vs All Tech */}
+            {/* Tab Switcher: All Technology Jobs vs HACA Jobs */}
             <div className="flex items-center p-1 bg-muted rounded-xl text-xs font-semibold">
               <button
                 onClick={() => setJobsViewTab('recommended')}
@@ -1771,7 +1859,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     : 'text-slate-600 hover:text-foreground'
                 }`}
               >
-                Recommended for You ({recommendedJobs.filter(r => r.designationMatch && r.verdict !== 'NOT_MATCHED' && (r.matchScore ?? 0) >= 40).length})
+                All Technology Jobs ({recommendedJobs.filter(r => r.designationMatch && r.verdict !== 'NOT_MATCHED' && (r.matchScore ?? 0) >= 40).length})
               </button>
               <button
                 onClick={() => setJobsViewTab('all')}
@@ -1781,7 +1869,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                     : 'text-slate-600 hover:text-foreground'
                 }`}
               >
-                All Opportunities ({allJobs.filter(j => j.status === 'ACTIVE').length})
+                HACA Jobs ({allJobs.filter(j => j.status === 'ACTIVE' && j.sourceChannel !== 'AI_JOB_SCRAPER' && j.sourceChannel !== 'ATS_JOB_API').length})
               </button>
             </div>
           </div>
@@ -1944,6 +2032,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
             const filteredAll = allJobs.filter(job => {
               if (job.status !== 'ACTIVE') return false;
+              if (job.sourceChannel === 'AI_JOB_SCRAPER' || job.sourceChannel === 'ATS_JOB_API') return false;
               if (jobCategoryFilter !== 'ALL' && getDisplayJobCategory(job) !== jobCategoryFilter && job.category !== jobCategoryFilter) return false;
               if (jobDesignationFilter.trim()) {
                 const df = jobDesignationFilter.toLowerCase().trim();
@@ -1973,20 +2062,20 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               return true;
             });
 
-            const totalActiveJobs = allJobs.filter(j => j.status === 'ACTIVE');
+            const totalHacaJobs = allJobs.filter(j => j.status === 'ACTIVE' && j.sourceChannel !== 'AI_JOB_SCRAPER' && j.sourceChannel !== 'ATS_JOB_API');
             const currentCount = jobsViewTab === 'recommended' ? filteredRecs.length : filteredAll.length;
             const totalCount = jobsViewTab === 'recommended' 
               ? compatibleRecs.length
-              : totalActiveJobs.length;
+              : totalHacaJobs.length;
 
             return (
               <div className="flex items-center justify-between px-1 py-1 text-xs text-slate-500 font-medium">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                   {jobsViewTab === 'recommended' ? (
-                    <span>Showing <strong>{currentCount}</strong> of <strong>{totalCount}</strong> matching opportunities for your profile</span>
+                    <span>Showing <strong>{currentCount}</strong> of <strong>{totalCount}</strong> technology opportunities</span>
                   ) : (
-                    <span>Showing <strong>{currentCount}</strong> of <strong>{totalCount}</strong> active tech opportunities</span>
+                    <span>Showing <strong>{currentCount}</strong> of <strong>{totalCount}</strong> exclusive HACA jobs</span>
                   )}
                 </span>
                 <div className="flex items-center gap-2">
@@ -2045,8 +2134,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             });
 
             if (displayRecs.length === 0) {
-              const allMatchingInLoc = allJobs.filter(job => {
+              const hacaMatchingInLoc = allJobs.filter(job => {
                 if (job.status !== 'ACTIVE') return false;
+                if (job.sourceChannel === 'AI_JOB_SCRAPER' || job.sourceChannel === 'ATS_JOB_API') return false;
                 if (jobLocationFilter && jobLocationFilter !== 'ALL') {
                   if (!isJobMatchingLocation(job.location, jobLocationFilter)) return false;
                 }
@@ -2060,19 +2150,19 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   </div>
                   <h4 className="font-bold text-foreground text-sm">
                     {jobLocationFilter && jobLocationFilter !== 'ALL'
-                      ? `No Recommended Roles Found in ${jobLocationFilter}`
-                      : 'No Matching Recommendations Found'}
+                      ? `No Technology Roles Found in ${jobLocationFilter}`
+                      : 'No Matching Technology Roles Found'}
                   </h4>
                   <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    {jobLocationFilter && jobLocationFilter !== 'ALL' && allMatchingInLoc > 0
-                      ? `There are ${allMatchingInLoc} open position${allMatchingInLoc > 1 ? 's' : ''} available in ${jobLocationFilter} under All Opportunities.`
-                      : 'We filtered out non-matching positions so you only see roles aligned with your field. Switch to All Opportunities to browse all open vacancies.'}
+                    {jobLocationFilter && jobLocationFilter !== 'ALL' && hacaMatchingInLoc > 0
+                      ? `There are ${hacaMatchingInLoc} exclusive position${hacaMatchingInLoc > 1 ? 's' : ''} available in ${jobLocationFilter} under HACA Jobs.`
+                      : 'We filtered out non-matching positions so you only see roles aligned with your field. Switch to HACA Jobs to browse internal placement drives.'}
                   </p>
                   <button
                     onClick={() => setJobsViewTab('all')}
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
                   >
-                    View All Opportunities {jobLocationFilter && jobLocationFilter !== 'ALL' && allMatchingInLoc > 0 ? `in ${jobLocationFilter} (${allMatchingInLoc})` : ''}
+                    View HACA Jobs {jobLocationFilter && jobLocationFilter !== 'ALL' && hacaMatchingInLoc > 0 ? `in ${jobLocationFilter} (${hacaMatchingInLoc})` : ''}
                   </button>
                 </div>
               );
@@ -2210,10 +2300,11 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
             );
           })()}
 
-          {/* Job listings (All Opportunities Tab) */}
+          {/* Job listings (HACA Jobs Tab) */}
           {jobsViewTab === 'all' && (() => {
             const currentTabJobs = allJobs.filter(job => {
               if (job.status !== 'ACTIVE') return false;
+              if (job.sourceChannel === 'AI_JOB_SCRAPER' || job.sourceChannel === 'ATS_JOB_API') return false;
               if (jobCategoryFilter !== 'ALL' && getDisplayJobCategory(job) !== jobCategoryFilter && job.category !== jobCategoryFilter) return false;
 
               if (jobDesignationFilter.trim()) {
@@ -2256,13 +2347,13 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                   </div>
                   <h4 className="font-bold text-foreground text-sm">
                     {jobLocationFilter && jobLocationFilter !== 'ALL'
-                      ? `No Active Positions Found in ${jobLocationFilter}`
-                      : 'No Opportunities Found'}
+                      ? `No HACA Jobs Found in ${jobLocationFilter}`
+                      : 'No HACA Jobs Found'}
                   </h4>
                   <p className="text-xs text-slate-500 max-w-md mx-auto">
                     {jobLocationFilter && jobLocationFilter !== 'ALL'
-                      ? `No positions match your current filters in ${jobLocationFilter}. Try clearing other filters to see all jobs in this state.`
-                      : 'No open positions match your current filter criteria.'}
+                      ? `No exclusive HACA campus drives or referral positions match your current search and filters in ${jobLocationFilter}. Try clearing other filters to see all jobs in this state.`
+                      : 'No exclusive HACA campus drives or referral positions match your current search and filters.'}
                   </p>
                   {(jobLocationFilter !== 'ALL' || jobSearch || jobCategoryFilter !== 'ALL' || jobDesignationFilter || jobWorkModeFilter !== 'ALL') && (
                     <button
@@ -2539,9 +2630,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
 
                     <div className="grid grid-cols-6 gap-1">
                       {pipelineStagesList.map((st, idx) => {
-                        const currentIdx = pipelineStagesList.indexOf(app.status);
+                        const currentIdx = getPipelineStageIndex(app.status);
                         const isReached = currentIdx >= idx;
-                        const isCurrent = app.status === st;
+                        const isCurrent = currentIdx === idx;
 
                         return (
                           <div 
@@ -2618,55 +2709,109 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           </div>
 
           <div className="space-y-4">
-            {myApplications.map(app => {
-              const latestInterview = app.interviewDates && app.interviewDates.length > 0
-                ? app.interviewDates[app.interviewDates.length - 1]
-                : null;
-              const roundTitle = latestInterview?.title || (app as any).interviewRound || 'Technical Screening';
-              const roundDate = latestInterview?.date
-                ? new Date(latestInterview.date).toLocaleString()
-                : (app as any).interviewDate
-                ? new Date((app as any).interviewDate).toLocaleString()
-                : 'Pending Confirmation';
+            {(() => {
+              // Filter only applications where an interview is scheduled on the pipeline basis
+              const scheduledApps = myApplications.filter(app => {
+                // Must be at INTERVIEW_SCHEDULED in the application status pipeline
+                if (app.status === 'INTERVIEW_SCHEDULED') return true;
+                // Or have an active, incomplete scheduled interview round and not withdrawn/rejected/pre-interview
+                if (app.interviewDates && app.interviewDates.some(iv => !iv.completed) && 
+                    !['APPLICATION_STARTED', 'APPLIED', 'SHORTLISTED', 'NOT_APPLIED', 'REJECTED'].includes(app.status)) {
+                  return true;
+                }
+                return false;
+              });
 
-              return (
-                <div key={app.id} className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-foreground text-sm">{app.company || (app as any).companyName}</span>
-                      <span className="text-xs text-slate-400">· {app.jobTitle}</span>
+              if (scheduledApps.length === 0) {
+                return (
+                  <div className="bg-white p-12 text-center rounded-2xl border border-border shadow-xs space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center mx-auto">
+                      <Calendar className="w-6 h-6" />
                     </div>
-                    <div className="text-xs text-slate-600 flex items-center gap-3">
-                      <span>Round: <strong className="text-slate-800">{roundTitle}</strong></span>
-                      <span>Mode: <strong className="text-slate-800">Online (Google Meet)</strong></span>
-                      <span>Date: <strong className="text-slate-800">{roundDate}</strong></span>
-                    </div>
-                    <div className="text-[11px] text-slate-400 mt-1">
-                      Current Status: <strong className="text-slate-700">{app.status}</strong>
+                    <h3 className="text-sm font-bold text-foreground">No Interviews Scheduled</h3>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto">
+                      Only applications where an interview has been scheduled in your application pipeline will appear here. When you change an application's status to <span className="font-semibold text-violet-700">Interview Scheduled</span>, you will be prompted to set the interview date, and it will be tracked here.
+                    </p>
+                    <div className="pt-2">
+                      <button
+                        onClick={() => onNavigate && onNavigate('student_applications')}
+                        className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                      >
+                        <span>View My Applications Pipeline</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
+                );
+              }
 
-                  {/* Quick Testing Status Changer */}
-                  <div className="shrink-0 flex items-center gap-2">
-                    <span className="text-[11px] text-slate-400 font-medium">Test Outcome:</span>
-                    <button
-                      disabled={updatingInterviewId === app.id}
-                      onClick={() => handleUpdateInterviewStatus(app.id, 'SELECTED')}
-                      className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded text-xs font-semibold cursor-pointer"
-                    >
-                      Pass Round
-                    </button>
-                    <button
-                      disabled={updatingInterviewId === app.id}
-                      onClick={() => handleUpdateInterviewStatus(app.id, 'REJECTED')}
-                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded text-xs font-semibold cursor-pointer"
-                    >
-                      Fail Round
-                    </button>
+              return scheduledApps.map(app => {
+                const latestInterview = app.interviewDates && app.interviewDates.length > 0
+                  ? app.interviewDates[app.interviewDates.length - 1]
+                  : null;
+                const roundTitle = latestInterview?.title || (app as any).interviewRound || 'Technical Screening';
+                const modeTitle = (app as any).interviewMode || latestInterview?.notes || 'Online (Google Meet)';
+                const rawDate = latestInterview?.date || (app as any).interviewDate;
+                const roundDate = rawDate
+                  ? new Date(rawDate).toLocaleString(undefined, {
+                      weekday: 'short',
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : 'Pending Confirmation';
+
+                return (
+                  <div key={app.id} className="bg-white p-5 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-foreground text-sm">{app.company || (app as any).companyName}</span>
+                        <span className="text-xs text-slate-400">· {app.jobTitle}</span>
+                        <ApplicationStatusBadge status={app.status} />
+                      </div>
+                      <div className="text-xs text-slate-600 flex items-center gap-3 flex-wrap">
+                        <span>Round: <strong className="text-slate-800">{roundTitle}</strong></span>
+                        <span>Mode: <strong className="text-slate-800">{modeTitle}</strong></span>
+                        <span className="flex items-center gap-1 text-violet-700 bg-violet-50 px-2 py-0.5 rounded-md font-semibold text-xs border border-violet-100">
+                          <Calendar className="w-3.5 h-3.5 text-violet-600 shrink-0" />
+                          <span>{roundDate}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions: Reschedule / Change Date & Quick test outcomes */}
+                    <div className="shrink-0 flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => handleOpenManualUpdate(app)}
+                        className="px-2.5 py-1 text-xs font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Reschedule interview date or update status"
+                      >
+                        <Edit3 className="w-3 h-3 text-violet-600" />
+                        <span>Update / Reschedule</span>
+                      </button>
+
+                      <span className="text-[11px] text-slate-400 font-medium ml-1">Test Outcome:</span>
+                      <button
+                        disabled={updatingInterviewId === app.id}
+                        onClick={() => handleUpdateInterviewStatus(app.id, 'SELECTED')}
+                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded text-xs font-semibold cursor-pointer"
+                      >
+                        Pass Round
+                      </button>
+                      <button
+                        disabled={updatingInterviewId === app.id}
+                        onClick={() => handleUpdateInterviewStatus(app.id, 'REJECTED')}
+                        className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded text-xs font-semibold cursor-pointer"
+                      >
+                        Fail Round
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
       )}
@@ -2680,7 +2825,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-bold text-foreground tracking-tight">Notifications & Follow-Ups</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Application status check-ins, recruitment alerts & announcements</p>
+              <p className="text-xs text-slate-500 mt-0.5">Application status check-ins and recruitment follow-ups</p>
             </div>
             {pendingCheckInApps.length > 0 && (
               <span className="px-3 py-1.5 bg-violet-100 text-violet-800 text-xs font-bold rounded-full border border-violet-200 flex items-center gap-1.5 self-start sm:self-auto">
@@ -2848,11 +2993,30 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                                 ))}
                               </div>
 
+                              {state.status === 'INTERVIEW_SCHEDULED' && (
+                                <div className="p-3 bg-white rounded-xl border border-violet-200 space-y-1.5">
+                                  <label className="text-[11px] font-bold text-violet-950 flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5 text-violet-600" />
+                                    <span>Interview Date & Time <span className="text-rose-500">*</span></span>
+                                  </label>
+                                  <input
+                                    type="datetime-local"
+                                    value={state.interviewDate || ''}
+                                    onChange={e => setNotificationResponses(prev => ({
+                                      ...prev,
+                                      [app.id]: { ...state, interviewDate: e.target.value }
+                                    }))}
+                                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-800 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                    required
+                                  />
+                                </div>
+                              )}
+
                               <div className="flex justify-end pt-2">
                                 <button
                                   type="button"
                                   onClick={() => handleNotificationSubmit(app)}
-                                  disabled={!state.status || state.submitting}
+                                  disabled={!state.status || (state.status === 'INTERVIEW_SCHEDULED' && !state.interviewDate) || state.submitting}
                                   className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
                                 >
                                   {state.submitting ? 'Saving Update...' : 'Save Status Update'}
@@ -2890,53 +3054,6 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               )}
             </div>
           )}
-
-          {/* SECTION 2: GENERAL ANNOUNCEMENTS & RECRUITMENT ALERTS */}
-          <div className="space-y-3 pt-2">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              General Announcements
-            </h3>
-            <div className="bg-white rounded-2xl border border-border shadow-sm divide-y divide-border/70 text-xs">
-              <div className="p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-                  <Check className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-foreground">Placement Eligibility Granted</div>
-                  <div className="text-slate-500 mt-0.5">
-                    Your academic records and placement eligibility have been reviewed and approved by your mentor.
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-1">Yesterday at 4:30 PM</div>
-                </div>
-              </div>
-
-              <div className="p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
-                  <Briefcase className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-foreground">New Requisition Matched: ABC Technologies</div>
-                  <div className="text-slate-500 mt-0.5">
-                    A new role matching your skills in React and TypeScript is open for applications.
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-1">3 days ago</div>
-                </div>
-              </div>
-
-              <div className="p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
-                  <Calendar className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-foreground">Mock Interview Round Scheduled</div>
-                  <div className="text-slate-500 mt-0.5">
-                    Technical interview screening scheduled for tomorrow afternoon.
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-1">4 days ago</div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -3592,6 +3709,74 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 })}
               </div>
 
+              {/* Interview Scheduling Input Form */}
+              {manualSelectedStatus === 'INTERVIEW_SCHEDULED' && (
+                <div className="p-4 bg-gradient-to-br from-violet-50/90 to-indigo-50/70 border border-violet-200 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-violet-600 text-white flex items-center justify-center shadow-xs">
+                      <Calendar className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-violet-950">Interview Scheduling Details</h4>
+                      <p className="text-[10px] text-violet-700">Enter your confirmed date and round details for the interview schedule</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5 pt-1">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Interview Date & Time <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={manualInterviewDate}
+                        onChange={e => setManualInterviewDate(e.target.value)}
+                        className="w-full text-xs bg-white border border-violet-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30 font-medium"
+                        required
+                      />
+                      {!manualInterviewDate && (
+                        <p className="text-[10px] text-amber-700 mt-1 flex items-center gap-1 font-medium">
+                          <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                          <span>Interview date & time is required when setting status to Interview Scheduled.</span>
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                          Round Title
+                        </label>
+                        <input
+                          type="text"
+                          value={manualInterviewRound}
+                          onChange={e => setManualInterviewRound(e.target.value)}
+                          placeholder="e.g. Technical Screening"
+                          className="w-full text-xs bg-white border border-border rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                          Interview Mode
+                        </label>
+                        <select
+                          value={manualInterviewMode}
+                          onChange={e => setManualInterviewMode(e.target.value)}
+                          className="w-full text-xs bg-white border border-border rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                        >
+                          <option value="Online (Google Meet)">Online (Google Meet)</option>
+                          <option value="Online (Zoom)">Online (Zoom)</option>
+                          <option value="Online (MS Teams)">Online (MS Teams)</option>
+                          <option value="In-Person / Onsite">In-Person / Onsite</option>
+                          <option value="Phone Screening">Phone Screening</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Informative Note */}
               <div className="p-3 bg-blue-50/70 border border-blue-200/70 rounded-xl text-[11px] text-blue-800 flex items-start gap-2">
                 <AlertCircle className="w-3.5 h-3.5 mt-0.5 text-blue-600 shrink-0" />
@@ -3610,7 +3795,11 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               </button>
               <button
                 type="button"
-                disabled={manualUpdateSubmitting || !manualSelectedStatus || manualSelectedStatus === manualUpdateApp.status}
+                disabled={
+                  manualUpdateSubmitting || 
+                  !manualSelectedStatus || 
+                  (manualSelectedStatus === 'INTERVIEW_SCHEDULED' ? !manualInterviewDate : manualSelectedStatus === manualUpdateApp.status)
+                }
                 onClick={handleManualStatusSubmit}
                 className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-xs"
               >

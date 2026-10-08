@@ -400,9 +400,12 @@ router.patch('/applications/:id/help-status', requireRole(...OPS), wrap(async (r
 
 router.patch('/applications/:id/status', wrap(async (req, res) => {
   await ownOrStaff(req, req.params.id);
-  const { status } = req.body;
+  const { status, interviewDate, interviewRound, interviewMode } = req.body;
   if (!status) return res.status(400).json({ error: 'Status is required.' });
-  res.json({ application: await dbStore.updateApplicationStatus(req.params.id, status, req.actor), message: `Application status updated to ${status}.` });
+  res.json({
+    application: await dbStore.updateApplicationStatus(req.params.id, status, req.actor, { interviewDate, interviewRound, interviewMode }),
+    message: `Application status updated to ${status}.`
+  });
 }));
 
 router.delete('/applications/:id', wrap(async (req, res) => {

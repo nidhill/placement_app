@@ -56,8 +56,7 @@ export type NavigationItem =
   | 'student_jobs'
   | 'student_applications'
   | 'student_interviews'
-  | 'student_notifications'
-  | 'student_resume_builder';
+  | 'student_notifications';
 
 export type NavItemId = NavigationItem;
 
@@ -110,7 +109,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if ((item === 'student_jobs' || item === 'jobs') && (selected === 'student_jobs' || selected === 'jobs')) return true;
     if ((item === 'student_applications' || item === 'applications') && (selected === 'student_applications' || selected === 'applications')) return true;
     if ((item === 'student_dashboard' || item === 'dashboard') && (selected === 'student_dashboard' || selected === 'dashboard')) return true;
-    if (item === 'student_resume_builder' && selected === 'student_resume_builder') return true;
     return false;
   };
 
@@ -165,7 +163,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const studentNav: NavLinkConfig[] = [
     { id: 'student_dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'student_profile', label: 'My Profile', icon: UserIcon },
-    { id: 'student_resume_builder', label: 'AI Resume Agent', icon: FileText },
     { id: 'student_jobs', label: 'Find Jobs', icon: Briefcase },
     { id: 'student_applications', label: 'My Applications', icon: FileCheck2 },
     { id: 'student_interviews', label: 'Interviews', icon: Calendar },

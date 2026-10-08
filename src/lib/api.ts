@@ -47,7 +47,16 @@ export function setToken(t: string | null) { try { t ? localStorage.setItem(TOKE
 
 const APP_STATUS_OVERRIDES_KEY = 'haca_app_status_overrides';
 
-function getStatusOverrides(): Record<string, { status: ApplicationStatus; updatedAt: string }> {
+interface StatusOverrideData {
+  status: ApplicationStatus;
+  updatedAt: string;
+  interviewDate?: string;
+  interviewRound?: string;
+  interviewMode?: string;
+  interviewDates?: Array<{ round: number; title: string; date: string; completed: boolean; notes?: string }>;
+}
+
+function getStatusOverrides(): Record<string, StatusOverrideData> {
   try {
     const raw = localStorage.getItem(APP_STATUS_OVERRIDES_KEY);
     return raw ? JSON.parse(raw) : {};
@@ -56,10 +65,18 @@ function getStatusOverrides(): Record<string, { status: ApplicationStatus; updat
   }
 }
 
-function saveStatusOverride(applicationId: string, status: ApplicationStatus) {
+function saveStatusOverride(
+  applicationId: string, 
+  status: ApplicationStatus, 
+  extra?: { interviewDate?: string; interviewRound?: string; interviewMode?: string; interviewDates?: any[] }
+) {
   try {
     const current = getStatusOverrides();
-    current[applicationId] = { status, updatedAt: new Date().toISOString() };
+    current[applicationId] = { 
+      status, 
+      updatedAt: new Date().toISOString(),
+      ...(extra || {})
+    };
     localStorage.setItem(APP_STATUS_OVERRIDES_KEY, JSON.stringify(current));
   } catch {
     // ignore
@@ -531,7 +548,31 @@ class ApiClient {
       res.applications = res.applications.map(app => {
         const ovr = overrides[app.id];
         if (ovr) {
-          return { ...app, status: ovr.status, updatedAt: ovr.updatedAt || app.updatedAt };
+          const merged: JobApplication = { 
+            ...app, 
+            status: ovr.status, 
+            updatedAt: ovr.updatedAt || app.updatedAt 
+          };
+          if (ovr.interviewDates && ovr.interviewDates.length > 0) {
+            merged.interviewDates = ovr.interviewDates;
+            const lastIv = ovr.interviewDates[ovr.interviewDates.length - 1];
+            merged.interviewDate = lastIv.date;
+            merged.interviewRound = lastIv.title;
+          } else if (ovr.interviewDate) {
+            const existing = [...(app.interviewDates || [])];
+            existing.push({
+              round: existing.length + 1,
+              title: ovr.interviewRound || 'Technical Screening',
+              date: ovr.interviewDate,
+              completed: false,
+              notes: ovr.interviewMode || 'Online (Google Meet)'
+            });
+            merged.interviewDates = existing;
+            merged.interviewDate = ovr.interviewDate;
+            merged.interviewRound = ovr.interviewRound;
+            merged.interviewMode = ovr.interviewMode;
+          }
+          return merged;
         }
         return app;
       });
@@ -575,20 +616,24 @@ class ApiClient {
     });
   }
 
-  public async updateApplicationStatus(applicationId: string, status: ApplicationStatus): Promise<{ application: JobApplication; message: string }> {
+  public async updateApplicationStatus(
+    applicationId: string, 
+    status: ApplicationStatus,
+    extra?: { interviewDate?: string; interviewRound?: string; interviewMode?: string }
+  ): Promise<{ application: JobApplication; message: string }> {
     try {
       const res = await this.request<{ application: JobApplication; message: string }>(`/api/placement/applications/${applicationId}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status, ...extra })
       });
-      saveStatusOverride(applicationId, status);
+      saveStatusOverride(applicationId, status, extra);
       return res;
     } catch (err: any) {
       // If server returns permission error (e.g. live backend restricts to OPS before deployment)
       if (err.status === 403 || String(err.message).includes('PLACEMENT_OFFICER') || String(err.message).includes('MAIN_ADMIN') || String(err.message).includes('Permission')) {
-        saveStatusOverride(applicationId, status);
+        saveStatusOverride(applicationId, status, extra);
         return {
-          application: { id: applicationId, status } as any,
+          application: { id: applicationId, status, ...extra } as any,
           message: `Application status updated to ${status}.`
         };
       }

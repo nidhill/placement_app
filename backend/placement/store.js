@@ -548,18 +548,35 @@ class PlacementStore {
     return true;
   }
 
-  async updateApplicationStatus(id, newStatus, actor) {
+  async updateApplicationStatus(id, newStatus, actor, extra = {}) {
     const a = await PlacementApplication.findOne({ id });
     if (!a) throw new Error('Application not found');
     const previousStatus = a.get('status');
-    a.set({ status: newStatus, updatedAt: new Date().toISOString() });
+    const updatePayload = { status: newStatus, updatedAt: new Date().toISOString() };
+    if (extra && extra.interviewDate) {
+      const dates = [...(a.get('interviewDates') || [])];
+      const roundNum = dates.length + 1;
+      const roundTitle = extra.interviewRound || 'Technical Screening';
+      dates.push({
+        round: roundNum,
+        title: roundTitle,
+        date: extra.interviewDate,
+        completed: false,
+        notes: extra.interviewMode || 'Online (Google Meet)'
+      });
+      updatePayload.interviewDates = dates;
+      updatePayload.interviewDate = extra.interviewDate;
+      updatePayload.interviewRound = roundTitle;
+      updatePayload.interviewMode = extra.interviewMode || 'Online (Google Meet)';
+    }
+    a.set(updatePayload);
     await a.save();
     if (newStatus === 'REJECTED') await PlacementStudent.updateOne({ id: a.get('studentId') }, { $inc: { 'inactivityFlags.consecutiveRejections': 1 } });
     else if (newStatus === 'SELECTED' || newStatus === 'JOINED') await PlacementStudent.updateOne({ id: a.get('studentId') }, { $set: { 'inactivityFlags.consecutiveRejections': 0 } });
     await this.logAudit({
       actorId: actor.id, actorName: actor.name, actorRole: actor.role,
       action: 'APPLICATION_STATUS_CHANGE', entityType: 'APPLICATION', entityId: id,
-      details: `Status of application for ${a.get('studentName')} at ${a.get('company')} changed from ${previousStatus} to ${newStatus}.`,
+      details: `Status of application for ${a.get('studentName')} at ${a.get('company')} changed from ${previousStatus} to ${newStatus}.${extra && extra.interviewDate ? ` Interview date: ${extra.interviewDate}.` : ''}`,
     });
     return strip(a);
   }

@@ -275,6 +275,9 @@ export interface JobApplication {
   appliedAt: string;           // Keep for backward compat (same as startedAt)
   createdAt?: string;          // Timestamp when application was created
   updatedAt: string;
+  interviewDate?: string;      // Current scheduled interview date ISO string
+  interviewRound?: string;     // Current scheduled interview round title
+  interviewMode?: string;      // Mode: Online, In-Person, etc.
   interviewDates: {
     round: number;
     title: string;
